@@ -1,5 +1,6 @@
 """ScienceDirect site adapter."""
 
+import json
 import logging
 import re
 from urllib.parse import urlencode, urljoin, urlparse
@@ -113,19 +114,37 @@ class ScienceDirectAdapter(SiteAdapter):
         return page_url.rstrip("/") + "/pdf"
 
     def figure_candidates(self, page_url: str, soup: BeautifulSoup, max_per_figure: int = 4) -> list[AssetCandidate]:
-        candidates = []
+        candidates: list[AssetCandidate] = []
+
+        for url, source, label, caption in self._figure_download_links(page_url, soup):
+            priority = 0 if source == "sciencedirect_highres_link" else 10
+            candidates.append(AssetCandidate(
+                type="figure",
+                url=url,
+                source=source,
+                label=label,
+                caption=caption,
+                priority=priority,
+            ))
+
+        candidates.extend(self._preloaded_image_candidates(page_url, soup))
+
+        fallback_candidates = []
         for candidate in super().figure_candidates(page_url, soup, max_per_figure=max_per_figure):
+            normalized_candidate = self._with_sciencedirect_figure_key(candidate)
+            fallback_candidates.append(normalized_candidate)
             upgraded = self._upgrade_image_url(candidate.url)
             if upgraded != candidate.url:
-                candidates.append(AssetCandidate(
+                fallback_candidates.append(AssetCandidate(
                     type="figure",
                     url=upgraded,
-                    source="sciencedirect_highres",
-                    label=candidate.label,
-                    caption=candidate.caption,
-                    priority=max(candidate.priority - 1, 0),
+                    source="sciencedirect_url_upgrade",
+                    label=normalized_candidate.label,
+                    caption=normalized_candidate.caption,
+                    priority=20,
                 ))
-            candidates.append(candidate)
+
+        candidates.extend(fallback_candidates)
         seen = set()
         result = []
         for candidate in sorted(candidates, key=lambda item: item.priority):
@@ -136,8 +155,172 @@ class ScienceDirectAdapter(SiteAdapter):
         return result
 
     @staticmethod
+    def _with_sciencedirect_figure_key(candidate: AssetCandidate) -> AssetCandidate:
+        label = candidate.label or ScienceDirectAdapter._image_key(candidate.url)
+        if label == candidate.label:
+            return candidate
+        return AssetCandidate(
+            type=candidate.type,
+            url=candidate.url,
+            source=candidate.source,
+            label=label,
+            caption=candidate.caption,
+            priority=candidate.priority,
+            content_type_hint=candidate.content_type_hint,
+        )
+
+    @staticmethod
+    def _figure_download_links(page_url: str, soup: BeautifulSoup) -> list[tuple[str, str, str, str]]:
+        """Extract ScienceDirect figure download links from rendered article HTML."""
+        results: list[tuple[str, str, str, str]] = []
+        for anchor in soup.find_all("a"):
+            href = anchor.get("href", "")
+            if not href:
+                continue
+            text = anchor.get_text(" ", strip=True).lower()
+            title = " ".join(
+                str(anchor.get(attr, "")) for attr in ("title", "aria-label", "download")
+            ).lower()
+            combined = f"{text} {title}"
+            if not ScienceDirectAdapter._is_image_url(href):
+                continue
+
+            url = urljoin(page_url, href)
+            label, caption = ScienceDirectAdapter._figure_text(anchor, url)
+            if "high-res" in combined or "highres" in combined or "high res" in combined or "_lrg" in href:
+                results.append((url, "sciencedirect_highres_link", label, caption))
+            elif "full-size" in combined or "full size" in combined:
+                results.append((url, "sciencedirect_fullsize_link", label, caption))
+        return results
+
+    @staticmethod
+    def _figure_text(anchor, url: str) -> tuple[str, str]:
+        figure = anchor.find_parent("figure") or anchor.find_parent(attrs={"class": re.compile("figure|Fig", re.I)})
+        if not figure:
+            return ScienceDirectAdapter._image_key(url), ""
+        caption_el = figure.select_one("figcaption, [class*='caption'], [class*='legend'], [class*='fig-caption']")
+        label_el = figure.select_one("[class*='label'], [class*='fig-num']")
+        caption = caption_el.get_text(" ", strip=True) if caption_el else ""
+        label = label_el.get_text(" ", strip=True) if label_el else ""
+        return label or ScienceDirectAdapter._image_key(url), caption
+
+    @staticmethod
+    def _image_key(url: str) -> str:
+        """Return ScienceDirect image id, e.g. gr1, fx2, ga1."""
+        match = re.search(r"(?:^|[/\-_])(gr[0-9a-z]+|fx[0-9a-z]+|ga[0-9a-z]+)", url, re.IGNORECASE)
+        return match.group(1).lower() if match else ""
+
+    @staticmethod
+    def _preloaded_state(soup: BeautifulSoup) -> dict:
+        """Parse window.__PRELOADED_STATE__ from ScienceDirect article HTML."""
+        marker = "window.__PRELOADED_STATE__"
+        for script in soup.find_all("script"):
+            text = script.string or script.get_text() or ""
+            start = text.find(marker)
+            if start < 0:
+                continue
+            equals = text.find("=", start)
+            brace_start = text.find("{", equals)
+            if equals < 0 or brace_start < 0:
+                continue
+            payload = ScienceDirectAdapter._balanced_json_object(text, brace_start)
+            if not payload:
+                continue
+            try:
+                return json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+        return {}
+
+    @staticmethod
+    def _balanced_json_object(text: str, start: int) -> str:
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start, len(text)):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start:index + 1]
+        return ""
+
+    @staticmethod
+    def _preloaded_image_candidates(page_url: str, soup: BeautifulSoup) -> list[AssetCandidate]:
+        state = ScienceDirectAdapter._preloaded_state(soup)
+        if not state:
+            return []
+
+        candidates: list[AssetCandidate] = []
+        visited: set[int] = set()
+
+        def scan(obj):
+            if id(obj) in visited:
+                return
+            visited.add(id(obj))
+            if isinstance(obj, dict):
+                url = obj.get("ucs-locator") or obj.get("href") or obj.get("url") or obj.get("src") or ""
+                if isinstance(url, str) and url and ScienceDirectAdapter._is_image_url(url):
+                    attachment_type = str(obj.get("attachment-type", "")).upper()
+                    attachment_eid = str(obj.get("attachment-eid", ""))
+                    width = ScienceDirectAdapter._safe_int(obj.get("pixel-width"))
+                    is_highres = (
+                        "_lrg" in url.lower()
+                        or "HIGHRES" in attachment_type
+                        or "HIGH-RES" in attachment_type
+                        or "ORIGINAL" in attachment_type
+                        or width >= 500
+                    )
+                    source = "sciencedirect_preloaded_highres" if is_highres else "sciencedirect_preloaded"
+                    candidates.append(AssetCandidate(
+                        type="figure",
+                        url=urljoin(page_url, url),
+                        source=source,
+                        label=ScienceDirectAdapter._image_key(url) or attachment_eid[:20],
+                        caption="",
+                        priority=5 if is_highres else 15,
+                    ))
+                for value in obj.values():
+                    scan(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    scan(item)
+
+        scan(state)
+        return candidates
+
+    @staticmethod
+    def _safe_int(value) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _is_image_url(url: str) -> bool:
+        url_lower = url.lower()
+        image_extensions = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".tif", ".tiff", ".bmp")
+        return (
+            any(url_lower.endswith(ext) or f"{ext}?" in url_lower for ext in image_extensions)
+            or "/content/image/" in url_lower
+        )
+
+    @staticmethod
     def _upgrade_image_url(url: str) -> str:
-        url = re.sub(r"/(sml|sm|thumb)_", "/lrg_", url)
+        url = re.sub(r"/(sml|sm|thumb)(_|$)", "/lrg_", url)
+        url = re.sub(r"(?<=_)(sml|sm|thumb)(_|$)", "lrg", url)
         url = re.sub(r"\.(sml|sm|thumb)\.", ".lrg.", url)
         url = re.sub(r"/gr([0-9a-z]+)\\.sml", r"/gr\1", url)
         return url
