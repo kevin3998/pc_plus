@@ -1,1 +1,0 @@
-Fig. 11. Plots of rGO/CC 0.03 mL HI GCD curves at different current densities (a), CV curves at different scan rates (c); comparison of specific capacitance values of carbon cloth and rGO/CC 0.005–0.04 mL HI with respect to the change in different current densities (b) and scan rates (d).

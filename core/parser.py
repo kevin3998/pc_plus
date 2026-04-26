@@ -116,6 +116,7 @@ class ArticleParser:
             md = self._extract_fulltext(soup)
             if abstract:
                 md = self._prepend_abstract(md, abstract)
+            md = self._prepend_article_header(md, meta)
             self.storage.save_fulltext(adir, md)
 
         # ── 图片 ────────────────────────────────
@@ -188,12 +189,14 @@ class ArticleParser:
                         break
 
         # ── 作者列表 ────────────────────────────
-        if "authors" not in meta:
+        if not meta.get("authors"):
             authors = []
             for el in soup.find_all("meta", attrs={"name": "citation_author"}):
                 v = el.get("content", "").strip()
                 if v:
                     authors.append(v)
+            if not authors:
+                authors = self._extract_sciencedirect_authors(soup)
             if not authors:
                 # 备用：从正文作者 span 提取
                 for el in soup.select(
@@ -205,6 +208,11 @@ class ArticleParser:
                     if v and len(v) < 60:
                         authors.append(v)
             meta["authors"] = list(dict.fromkeys(authors))  # 去重保序
+
+        # ── 关键词 ──────────────────────────────
+        keywords = self._extract_keywords(soup)
+        if keywords:
+            meta["keywords"] = keywords
 
         # ── 兜底标题 ────────────────────────────
         if not meta.get("title"):
@@ -260,6 +268,69 @@ class ArticleParser:
         if markdown:
             return f"## Abstract\n\n{abstract}\n\n{markdown}"
         return f"## Abstract\n\n{abstract}"
+
+    @staticmethod
+    def _prepend_article_header(markdown: str, meta: dict) -> str:
+        lines = []
+        title = (meta.get("title") or "").strip()
+        authors = meta.get("authors") or []
+        keywords = meta.get("keywords") or []
+        if title:
+            lines.append(f"# {title}")
+        if authors:
+            lines.append(f"**Authors:** {'; '.join(authors)}")
+        if keywords:
+            lines.append(f"**Keywords:** {'; '.join(keywords)}")
+        if not lines:
+            return markdown
+        body = markdown.strip()
+        header = "\n\n".join(lines)
+        if body.startswith(header):
+            return body
+        return f"{header}\n\n{body}" if body else header
+
+    @staticmethod
+    def _extract_keywords(soup: BeautifulSoup) -> list[str]:
+        values = []
+        for name in ("citation_keywords", "citation_keyword", "keywords", "dc.subject", "DC.Subject"):
+            for el in soup.find_all("meta", attrs={"name": name}):
+                content = el.get("content", "").strip()
+                if content:
+                    values.extend(re.split(r"\s*[;,]\s*", content))
+
+        if not values:
+            for el in soup.select("div.Keywords div.keyword, div.keywords-section div.keyword"):
+                text = el.get_text(" ", strip=True)
+                if text and text.lower() != "keywords":
+                    values.append(text)
+
+        cleaned = []
+        for value in values:
+            value = re.sub(r"\s+", " ", value).strip(" ;,")
+            if value and value.lower() != "keywords":
+                cleaned.append(value)
+        return list(dict.fromkeys(cleaned))
+
+    @staticmethod
+    def _extract_sciencedirect_authors(soup: BeautifulSoup) -> list[str]:
+        state = _extract_preloaded_state(soup)
+        authors = []
+        for node in _walk_named_nodes(state.get("authors"), "author"):
+            given = _child_text(node, "given-name")
+            surname = _child_text(node, "surname")
+            name = " ".join(part for part in (given, surname) if part).strip()
+            if name:
+                authors.append(name)
+        if authors:
+            return list(dict.fromkeys(authors))
+
+        group = soup.select_one("div.author-group")
+        if not group:
+            return []
+        text = group.get_text(" ", strip=True)
+        text = re.sub(r"^Author links open overlay panel\s*", "", text, flags=re.I)
+        parts = [re.sub(r"\s+[a-z](?:\s+\d+)?$", "", part).strip() for part in text.split(",")]
+        return [part for part in parts if part and len(part) < 80]
 
     # ─────────────────────────────────────────────
     #  正文 → Markdown
@@ -345,10 +416,7 @@ class ArticleParser:
         count = 0
         completed_figures = set()
         for candidate in candidates:
-            figure_key = (
-                candidate.label.strip().lower(),
-                candidate.caption.strip().lower(),
-            )
+            figure_key = self._figure_key(candidate)
             if figure_key in completed_figures:
                 continue
             result = downloader.download_one(candidate, referer=page_url)
@@ -379,6 +447,16 @@ class ArticleParser:
                 )
 
         log.info(f"    共提取 {count} 张图片")
+
+    @staticmethod
+    def _figure_key(candidate: AssetCandidate) -> tuple[str, str]:
+        label = candidate.label.strip().lower()
+        caption = candidate.caption.strip().lower()
+        if label:
+            return ("label", label)
+        if caption:
+            return ("caption", caption)
+        return ("url", re.sub(r"(_lrg|[._-](?:sml|sm|thumb))(?=\.|$)", "", candidate.url.lower()))
 
     def _figure_candidates(self, soup: BeautifulSoup, page_url: str, max_per_figure: int) -> list[AssetCandidate]:
         if self.adapter and hasattr(self.adapter, "figure_candidates"):
@@ -514,6 +592,70 @@ def _node_text_without_heading(el: Tag) -> str:
     for node in clone.select("h1, h2, h3, h4, h5, h6, figure, table, script, style"):
         node.decompose()
     return clone.get_text(separator=" ", strip=True)
+
+
+def _extract_preloaded_state(soup: BeautifulSoup) -> dict:
+    marker = "window.__PRELOADED_STATE__"
+    for script in soup.find_all("script"):
+        text = script.string or script.get_text() or ""
+        start = text.find(marker)
+        if start < 0:
+            continue
+        equals = text.find("=", start)
+        brace_start = text.find("{", equals)
+        if equals < 0 or brace_start < 0:
+            continue
+        payload = _balanced_json_object(text, brace_start)
+        if not payload:
+            continue
+        try:
+            return json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+    return {}
+
+
+def _balanced_json_object(text: str, start: int) -> str:
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return ""
+
+
+def _walk_named_nodes(obj, name: str):
+    if isinstance(obj, dict):
+        if obj.get("#name") == name:
+            yield obj
+        for value in obj.values():
+            yield from _walk_named_nodes(value, name)
+    elif isinstance(obj, list):
+        for item in obj:
+            yield from _walk_named_nodes(item, name)
+
+
+def _child_text(node: dict, child_name: str) -> str:
+    for child in node.get("$$", []):
+        if isinstance(child, dict) and child.get("#name") == child_name:
+            return str(child.get("_", "")).strip()
+    return ""
 
 
 def _content_options(options: dict | None) -> dict:
