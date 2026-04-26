@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(conda env *)",
+      "Bash(/opt/anaconda3/envs/pc_plus/bin/python *)"
+    ]
+  }
+}

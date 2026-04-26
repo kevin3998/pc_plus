@@ -1,0 +1,35 @@
+{
+  "urls": {
+    "https://www.sciencedirect.com/science/article/pii/S0925838825051692": {
+      "status": "done",
+      "retries": 0,
+      "added": "2026-04-26T12:44:13.584300",
+      "updated": "2026-04-26T12:44:55.646622"
+    },
+    "https://www.sciencedirect.com/science/article/pii/S0038092X25007273": {
+      "status": "done",
+      "retries": 0,
+      "added": "2026-04-26T12:44:13.584304",
+      "updated": "2026-04-26T12:45:13.042357"
+    },
+    "https://www.sciencedirect.com/science/article/pii/S1369800125003142": {
+      "status": "done",
+      "retries": 0,
+      "added": "2026-04-26T12:44:13.584305",
+      "updated": "2026-04-26T12:45:30.648322"
+    },
+    "https://www.sciencedirect.com/science/article/pii/S0927024825004362": {
+      "status": "done",
+      "retries": 0,
+      "added": "2026-04-26T12:44:13.584305",
+      "updated": "2026-04-26T12:45:50.791597"
+    },
+    "https://www.sciencedirect.com/science/article/pii/S0040609025001439": {
+      "status": "done",
+      "retries": 0,
+      "added": "2026-04-26T12:44:13.584306",
+      "updated": "2026-04-26T12:46:10.939451"
+    }
+  },
+  "meta": {}
+}

@@ -1,0 +1,525 @@
+22:49:40 [INFO    ] cookie:   Chrome: 从 sciencedirect.com 读取到 15 个Cookie
+22:49:40 [INFO    ] cookie: ✓ 检测到 cf_clearance，Cloudflare 验证已通过
+22:49:42 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+22:49:42 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+22:49:42 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+09:31:54 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+09:31:54 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (Chrome 124)
+09:31:54 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+09:31:54 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+09:45:47 [INFO    ] cookie:   Chrome: 从 sciencedirect.com 读取到 14 个Cookie
+09:45:47 [INFO    ] cookie: ✓ 检测到 cf_clearance，Cloudflare 验证已通过
+09:45:52 [INFO    ] cookie: 已加载 14 个Cookie (来自文件)
+09:45:52 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (Chrome 124)
+09:45:52 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+09:45:52 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+09:48:05 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+09:48:05 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (Chrome 124)
+09:48:05 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+09:48:05 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+09:49:03 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+09:49:03 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+09:49:03 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+09:58:54 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+09:58:54 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (Chrome 124)
+09:58:54 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+09:58:54 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+10:00:35 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+10:00:35 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+10:00:35 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+10:00:35 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+10:53:09 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+10:53:09 [INFO    ] search: 
+════════════════════════════════════════════════════════════
+  检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+10:53:09 [INFO    ] search:   [SD] 第 1 页: https://www.sciencedirect.com/search?qs=transparent+conductive+oxide&date=2024-2025&show=25&offset=0&sortBy=relevance
+10:53:19 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+10:53:19 [INFO    ] browser: Patchright 浏览器已关闭
+10:55:46 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+10:55:46 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+10:55:47 [INFO    ] browser: 已注入 15 个 Cookie 到 Patchright 上下文
+10:55:47 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+10:55:47 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+10:58:07 [INFO    ] browser: Patchright 浏览器已关闭
+10:58:07 [ERROR   ] asyncio: Future exception was never retrieved
+future: <Future finished exception=Exception('Connection closed while reading from the driver')>
+Exception: Connection closed while reading from the driver
+10:58:30 [INFO    ] cookie: 已加载 15 个Cookie (来自文件)
+10:58:30 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+10:58:31 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+10:58:31 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+10:59:07 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 31 篇 | 共 5 篇
+10:59:16 [INFO    ] browser: Patchright 浏览器已关闭
+11:00:00 [INFO    ] cookie: 已加载 18 个Cookie (来自文件)
+11:00:00 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:00:00 [INFO    ] state: 注册 5 个URL到任务队列
+11:00:00 [INFO    ] main: 待处理: 5 / 5 篇
+11:00:00 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+11:00:00 [INFO    ] parser: 
+────────────────────────────────────────────────────────────
+11:00:00 [INFO    ] parser:   解析: https://www.sciencedirect.com/science/article/pii/S0925838825051692
+11:00:36 [ERROR   ] parser:   ✗ 页面获取失败 (status=403)
+11:00:36 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:00:36 [INFO    ] parser: 
+────────────────────────────────────────────────────────────
+11:00:36 [INFO    ] parser:   解析: https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:00:40 [ERROR   ] parser:   ✗ 页面获取失败 (status=403)
+11:00:40 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+11:00:40 [INFO    ] parser: 
+────────────────────────────────────────────────────────────
+11:00:40 [INFO    ] parser:   解析: https://www.sciencedirect.com/science/article/pii/S1369800125003142
+11:00:44 [ERROR   ] parser:   ✗ 页面获取失败 (status=403)
+11:00:44 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0927024825004362
+11:00:44 [INFO    ] parser: 
+────────────────────────────────────────────────────────────
+11:00:44 [INFO    ] parser:   解析: https://www.sciencedirect.com/science/article/pii/S0927024825004362
+11:00:49 [ERROR   ] parser:   ✗ 页面获取失败 (status=403)
+11:00:49 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S0040609025001439
+11:00:49 [INFO    ] parser: 
+────────────────────────────────────────────────────────────
+11:00:49 [INFO    ] parser:   解析: https://www.sciencedirect.com/science/article/pii/S0040609025001439
+11:00:53 [ERROR   ] parser:   ✗ 页面获取失败 (status=403)
+11:00:53 [INFO    ] main: 
+══════════════════════════════════════════════════
+  爬取完成
+  ✓ 成功: 0
+  ✗ 失败: 5
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:00:53 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   0
+  ✗ 失败:   5
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:03:38 [INFO    ] cookie: 已加载 18 个Cookie (来自文件)
+11:03:38 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:03:38 [INFO    ] state: 注册 5 个URL到任务队列
+11:03:38 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+11:03:38 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:03:39 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:03:39 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+11:04:02 [INFO    ] parser:   标题: Ultraviolet-transparent conductive electrodes based on oxide/Ag/oxide 
+11:04:38 [INFO    ] storage:     ✓ 图 1 已保存 (3 KB) 
+11:04:45 [INFO    ] storage:     ✓ 图 2 已保存 (4 KB) 
+11:04:45 [INFO    ] parser:     共提取 2 张图片
+11:04:45 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0925838825051692/pd
+11:04:51 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+11:04:51 [INFO    ] parser:   ✓ 完成: 10.1016-j.jallcom.2025.183608
+11:04:51 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:05:01 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+11:05:08 [INFO    ] main: 
+用户中断，保存进度后退出...
+11:05:08 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   1
+  ✗ 失败:   4
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:06:48 [INFO    ] cookie: 已加载 19 个Cookie (来自文件)
+11:06:48 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:06:49 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:06:49 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+11:07:07 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 0 篇 | 共 0 篇
+11:07:07 [INFO    ] browser: Patchright 浏览器已关闭
+11:09:47 [INFO    ] cookie: 已加载 20 个Cookie (来自文件)
+11:09:47 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:09:47 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:10:35 [INFO    ] browser: Patchright 浏览器已关闭
+11:10:43 [INFO    ] cookie: 已加载 25 个Cookie (来自文件)
+11:10:43 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:10:44 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:10:44 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+11:11:06 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 50 篇 | 共 5 篇
+11:11:30 [INFO    ] browser: Patchright 浏览器已关闭
+11:11:30 [INFO    ] cookie: 已加载 25 个Cookie (来自文件)
+11:11:30 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:11:30 [INFO    ] state: 注册 5 个URL到任务队列
+11:11:30 [INFO    ] main: 浏览器待处理: 4 / 5 篇
+11:11:30 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:11:31 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:11:31 [INFO    ] main: 
+[1/4] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:11:55 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+11:12:27 [INFO    ] storage:     ✓ 图 1 已保存 (53 KB) Fig. 1
+11:12:33 [INFO    ] storage:     ✓ 图 2 已保存 (72 KB) Fig. 2
+11:12:39 [INFO    ] storage:     ✓ 图 3 已保存 (20 KB) Fig. 3
+11:12:42 [INFO    ] storage:     ✓ 图 4 已保存 (42 KB) Fig. 4
+11:12:47 [INFO    ] storage:     ✓ 图 5 已保存 (68 KB) Fig. 5
+11:12:47 [INFO    ] parser:     共提取 5 张图片
+11:12:48 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:12:48 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:12:48 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:12:48 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+11:12:48 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+11:12:48 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+11:12:48 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0038092X25007273/pd
+11:12:54 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+11:12:54 [INFO    ] parser:   ✓ 完成: 10.1016-j.solener.2025.113964
+11:12:54 [INFO    ] main: 
+[2/4] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+11:13:15 [INFO    ] parser:   标题: Recent development and challenges of flexible perovskite transparent c
+11:13:20 [INFO    ] storage:     ✓ 图 1 已保存 (85 KB) 
+11:13:24 [INFO    ] storage:     ✓ 图 2 已保存 (99 KB) Fig. 1
+11:13:30 [INFO    ] storage:     ✓ 图 3 已保存 (116 KB) Fig. 2
+11:13:35 [INFO    ] storage:     ✓ 图 4 已保存 (111 KB) Fig. 3
+11:13:42 [INFO    ] storage:     ✓ 图 5 已保存 (316 KB) Fig. 4
+11:13:45 [INFO    ] storage:     ✓ 图 6 已保存 (155 KB) Fig. 5
+11:13:51 [INFO    ] storage:     ✓ 图 7 已保存 (107 KB) Fig. 6
+11:13:54 [INFO    ] storage:     ✓ 图 8 已保存 (124 KB) Fig. 7
+11:13:54 [INFO    ] parser:     共提取 8 张图片
+11:13:54 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:13:54 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:13:54 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:13:54 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+11:13:54 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+11:13:54 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+11:13:54 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S1369800125003142/pd
+11:14:00 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+11:14:00 [INFO    ] parser:   ✓ 完成: 10.1016-j.mssp.2025.109577
+11:14:00 [INFO    ] main: 
+[3/4] https://www.sciencedirect.com/science/article/pii/S0925838825051692/pdfft?pid=1-s2.0-S0925838825051692-main.pdf
+11:14:18 [INFO    ] parser:   标题: ?
+11:14:18 [INFO    ] parser:     共提取 0 张图片
+11:14:18 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0925838825051692/pd
+11:14:22 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+11:14:22 [INFO    ] parser:   ✓ 完成: 85032a43af6af67a
+11:14:22 [INFO    ] main: 
+[4/4] https://www.sciencedirect.com/science/article/pii/S0038092X25007273/pdfft?pid=1-s2.0-S0038092X25007273-main.pdf
+11:14:27 [INFO    ] parser:   标题: ?
+11:14:27 [INFO    ] parser:     共提取 0 张图片
+11:14:27 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0038092X25007273/pd
+11:14:31 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+11:14:31 [INFO    ] parser:   ✓ 完成: 79f5e10564935230
+11:14:31 [INFO    ] browser: Patchright 浏览器已关闭
+11:14:31 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 4
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:14:31 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 7
+  ✓ 完成:   5
+  ✗ 失败:   2
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:25:00 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:25:00 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:25:01 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:25:01 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+11:25:23 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 50 篇 | 共 5 篇
+11:25:45 [INFO    ] browser: Patchright 浏览器已关闭
+11:26:12 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:26:12 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:26:12 [INFO    ] state: 注册 5 个URL到任务队列
+11:26:12 [INFO    ] main: 浏览器待处理: 0 / 5 篇
+11:26:12 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:26:12 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:26:13 [INFO    ] browser: Patchright 浏览器已关闭
+11:26:13 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 0
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:26:13 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 7
+  ✓ 完成:   5
+  ✗ 失败:   2
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:27:04 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:27:04 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:27:04 [INFO    ] state: 注册 5 个URL到任务队列
+11:27:04 [INFO    ] main: 浏览器待处理: 0 / 5 篇
+11:27:04 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:27:04 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:27:05 [INFO    ] browser: Patchright 浏览器已关闭
+11:27:05 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 0
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:27:05 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 7
+  ✓ 完成:   5
+  ✗ 失败:   2
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:28:39 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:28:39 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:28:39 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:28:39 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+11:29:35 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 50 篇 | 共 5 篇
+11:29:35 [INFO    ] browser: Patchright 浏览器已关闭
+11:29:43 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:29:43 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:29:43 [INFO    ] state: 注册 5 个URL到任务队列
+11:29:43 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+11:29:43 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:29:44 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:29:44 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+11:30:07 [INFO    ] parser:   标题: Ultraviolet-transparent conductive electrodes based on oxide/Ag/oxide 
+11:30:07 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:30:07 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:30:07 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:30:07 [INFO    ] parser:   ✓ 完成: 10.1016-j.jallcom.2025.183608
+11:30:07 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692/pdfft?pid=1-s2.0-S0925838825051692-main.pdf
+11:30:14 [INFO    ] parser:   标题: ?
+11:30:14 [INFO    ] parser:   ✓ 完成: 85032a43af6af67a
+11:30:14 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:30:32 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+11:30:32 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:30:32 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:30:32 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:30:32 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+11:30:32 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+11:30:32 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+11:30:32 [INFO    ] parser:   ✓ 完成: 10.1016-j.solener.2025.113964
+11:30:32 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273/pdfft?pid=1-s2.0-S0038092X25007273-main.pdf
+11:30:36 [INFO    ] parser:   标题: ?
+11:30:36 [INFO    ] parser:   ✓ 完成: 79f5e10564935230
+11:30:36 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+11:30:54 [INFO    ] parser:   标题: Recent development and challenges of flexible perovskite transparent c
+11:30:55 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:30:55 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:30:55 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:30:55 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+11:30:55 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+11:30:55 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+11:30:55 [INFO    ] parser:   ✓ 完成: 10.1016-j.mssp.2025.109577
+11:30:55 [INFO    ] browser: Patchright 浏览器已关闭
+11:30:55 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:30:55 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+11:40:21 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:40:21 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:40:22 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:40:22 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+11:40:45 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 25 篇 | 共 5 篇
+11:41:08 [INFO    ] browser: Patchright 浏览器已关闭
+11:41:37 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+11:41:37 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+11:41:37 [INFO    ] state: 注册 5 个URL到任务队列
+11:41:37 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+11:41:38 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+11:41:40 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+11:41:40 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+11:42:03 [INFO    ] parser:   标题: Ultraviolet-transparent conductive electrodes based on oxide/Ag/oxide 
+11:42:03 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+11:42:03 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+11:42:22 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+11:42:22 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+11:42:22 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+11:42:39 [INFO    ] parser:   标题: Recent development and challenges of flexible perovskite transparent c
+11:42:39 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+11:42:39 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0927024825004362
+11:42:56 [INFO    ] parser:   标题: Zinc-tin oxide transparent conductive layers via reactive plasma depos
+11:42:57 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:42:57 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+11:42:57 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+11:42:57 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+11:42:57 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+11:42:57 [INFO    ] parser:   ✓ 完成: 10.1016-j.solmat.2025.113835
+11:42:57 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S0040609025001439
+11:43:14 [INFO    ] parser:   标题: Effects of UV ns laser annealing on the electrical and microstructural
+11:43:14 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+11:43:14 [INFO    ] parser:   ✓ 完成: 10.1016-j.tsf.2025.140743
+11:43:14 [INFO    ] browser: Patchright 浏览器已关闭
+11:43:14 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+11:43:14 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+12:43:49 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+12:43:49 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+12:43:49 [INFO    ] state: 注册 5 个URL到任务队列
+12:43:49 [INFO    ] main: 浏览器待处理: 0 / 5 篇
+12:43:49 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+12:43:51 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+12:43:52 [INFO    ] browser: Patchright 浏览器已关闭
+12:43:52 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 0
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+12:43:52 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+12:44:13 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+12:44:13 [INFO    ] main: 使用 curl_cffi TLS 指纹伪装 (chrome)
+12:44:13 [INFO    ] state: 注册 5 个URL到任务队列
+12:44:13 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+12:44:13 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+12:44:14 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+12:44:14 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+12:44:55 [INFO    ] parser:   标题: Ultraviolet-transparent conductive electrodes based on oxide/Ag/oxide 
+12:44:55 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+12:44:55 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+12:45:13 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+12:45:13 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+12:45:13 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+12:45:30 [INFO    ] parser:   标题: Recent development and challenges of flexible perovskite transparent c
+12:45:30 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+12:45:30 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0927024825004362
+12:45:50 [INFO    ] parser:   标题: Zinc-tin oxide transparent conductive layers via reactive plasma depos
+12:45:50 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+12:45:50 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S0040609025001439
+12:46:10 [INFO    ] parser:   标题: Effects of UV ns laser annealing on the electrical and microstructural
+12:46:10 [INFO    ] parser:   ↩ 已存在，跳过（断点续爬）
+12:46:11 [INFO    ] browser: Patchright 浏览器已关闭
+12:46:11 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+12:46:11 [INFO    ] state: 
+────────────────────────────────────────
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+12:57:36 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
