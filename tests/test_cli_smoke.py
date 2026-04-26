@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import types
@@ -28,7 +29,7 @@ def test_project_packages_import():
     from search.browser_search import BrowserJournalSearcher
     from utils.state import CrawlState
 
-    assert list(JOURNAL_CONFIGS) == ["sciencedirect"]
+    assert list(JOURNAL_CONFIGS) == ["sciencedirect", "springer", "nature"]
     assert BrowserEngine
     assert CookieManager
     assert BinaryDownloadSession
@@ -52,7 +53,9 @@ def test_main_sites_lists_only_supported_mainline_site():
 
     assert result.returncode == 0
     assert "sciencedirect" in result.stdout
-    assert "SpringerLink" not in result.stdout
+    assert "springer" in result.stdout
+    assert "SpringerLink" in result.stdout
+    assert "nature" in result.stdout
 
 
 def test_login_command_accepts_sciencedirect_site():
@@ -85,6 +88,20 @@ def test_search_uses_browser_by_default_and_keeps_browser_flag_compatible():
 
     assert args.command == "search"
     assert args_with_flag.browser is True
+
+
+def test_search_accepts_springer_site():
+    import main
+
+    parser = main.build_parser()
+    args = parser.parse_args([
+        "search",
+        "--site", "springer",
+        "--query", "transparent conductive oxide",
+        "--max", "5",
+    ])
+
+    assert args.site == "springer"
 
 
 def test_removed_http_curl_flags_are_not_exposed():
@@ -133,6 +150,19 @@ def test_crawl_accepts_browser_flag_for_compatibility():
     assert args.browser is True
 
 
+def test_crawl_accepts_optional_site_override():
+    import main
+
+    parser = main.build_parser()
+    args = parser.parse_args([
+        "crawl",
+        "--site", "springer",
+        "--url", "https://link.springer.com/article/10.1007/s10854-025-12345",
+    ])
+
+    assert args.site == "springer"
+
+
 def test_article_parser_can_parse_supplied_html(tmp_path):
     from core.parser import ArticleParser
     from core.storage import StorageManager
@@ -158,7 +188,14 @@ def test_article_parser_can_parse_supplied_html(tmp_path):
         "tables": False,
         "fulltext": True,
     }) is True
-    assert (tmp_path / "10.1016-j.example.2025.1" / "meta.json").exists()
+    assert (
+        tmp_path
+        / "articles"
+        / "sciencedirect"
+        / "_library"
+        / "10.1016-j.example.2025.1"
+        / "meta.json"
+    ).exists()
 
 
 def test_article_parser_respects_disabled_content_options(tmp_path, monkeypatch):
@@ -190,10 +227,10 @@ def test_article_parser_respects_disabled_content_options(tmp_path, monkeypatch)
     }) is True
 
     assert calls == []
-    adir = tmp_path / "10.1016-j.options.2025.1"
+    adir = tmp_path / "articles" / "sciencedirect" / "_library" / "10.1016-j.options.2025.1"
     assert (adir / "meta.json").exists()
-    assert not (adir / "article.html").exists()
-    assert not (adir / "fulltext.md").exists()
+    assert not (adir / "raw" / "article.html").exists()
+    assert not (adir / "parsed" / "fulltext.md").exists()
 
 
 def test_article_parser_extracts_sciencedirect_div_paragraphs(tmp_path):
@@ -235,14 +272,22 @@ def test_article_parser_extracts_sciencedirect_div_paragraphs(tmp_path):
         "fulltext": True,
     }) is True
 
-    fulltext = (tmp_path / "10.1016-j.sd-body.2025.1" / "fulltext.md").read_text()
+    fulltext = (
+        tmp_path
+        / "articles"
+        / "sciencedirect"
+        / "_library"
+        / "10.1016-j.sd-body.2025.1"
+        / "parsed"
+        / "fulltext.md"
+    ).read_text()
     assert "Perovskite solar cells are rapidly becoming" in fulltext
     assert "Transparent conductive oxides contribute" in fulltext
     assert "1. Introduction" in fulltext
 
 
 def test_sciencedirect_browser_search_extracts_rendered_results():
-    from search.browser_search import ScienceDirectBrowserSearch
+    from sites.registry import get_adapter
 
     html = """
     <html><body>
@@ -255,7 +300,7 @@ def test_sciencedirect_browser_search_extracts_rendered_results():
     </body></html>
     """
 
-    results = ScienceDirectBrowserSearch.extract_results(html)
+    results = get_adapter("sciencedirect").extract_results(html)
 
     assert [r.url for r in results] == [
         "https://www.sciencedirect.com/science/article/pii/S123",
@@ -278,9 +323,136 @@ def test_crawl_url_collection_filters_sciencedirect_pdf_links(tmp_path):
         encoding="utf-8",
     )
 
-    urls = main._collect_crawl_urls(types.SimpleNamespace(file=str(urls_file), url=None))
+    urls = main._collect_crawl_urls(types.SimpleNamespace(file=str(urls_file), url=None, site=None))
 
     assert urls == [
         "https://www.sciencedirect.com/science/article/pii/S123",
         "https://www.sciencedirect.com/science/article/pii/S456",
     ]
+
+
+def test_crawl_url_collection_detects_mixed_site_urls(tmp_path):
+    import main
+
+    urls_file = tmp_path / "urls.txt"
+    urls_file.write_text(
+        "\n".join([
+            "https://www.sciencedirect.com/science/article/pii/S123/pdfft?pid=main.pdf",
+            "https://link.springer.com/article/10.1007/s10854-025-12345?foo=bar",
+            "https://www.nature.com/articles/s41586-025-00001?proof=t",
+        ]),
+        encoding="utf-8",
+    )
+
+    items = main._collect_crawl_items(types.SimpleNamespace(file=str(urls_file), url=None, site=None))
+
+    assert [(item.site, item.url) for item in items] == [
+        ("sciencedirect", "https://www.sciencedirect.com/science/article/pii/S123"),
+        ("springer", "https://link.springer.com/article/10.1007/s10854-025-12345"),
+        ("nature", "https://www.nature.com/articles/s41586-025-00001"),
+    ]
+
+
+def test_site_profile_dir_is_isolated_by_site():
+    import main
+
+    assert main._profile_dir_for_site("springer").as_posix().endswith("browser_profiles/springer")
+
+
+def test_unknown_crawl_urls_are_recorded_as_failed(tmp_path, monkeypatch):
+    import main
+
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path / "data")
+    item = main.CrawlItem(site="unknown", url="https://example.test/article", error="无法识别站点")
+
+    main._do_browser_crawl_items(cm=None, items=[item], args=types.SimpleNamespace())
+
+    storage = main.StorageManager(tmp_path / "data", site="unknown")
+    run_id = storage.latest_run_id()
+    assert storage.run_summary(run_id)["failed"] == 1
+
+
+def test_search_result_handler_writes_default_urls_inside_run_dir(tmp_path, monkeypatch):
+    import main
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    monkeypatch.chdir(tmp_path)
+    storage = StorageManager(tmp_path / "data", site="sciencedirect")
+    run_id = storage.create_run(site="sciencedirect", query="q", run_type="search")
+    args = types.SimpleNamespace(output_urls=None, crawl=False)
+
+    main._handle_search_results([
+        SearchResult(url="https://www.sciencedirect.com/science/article/pii/S123", title="First", year="2025")
+    ], cm=None, args=args, storage=storage, run_id=run_id)
+
+    run_urls = tmp_path / "data" / "runs" / run_id / "urls.txt"
+    assert run_urls.read_text() == "https://www.sciencedirect.com/science/article/pii/S123"
+    assert not (tmp_path / "search_results.txt").exists()
+    jsonl = tmp_path / "data" / "runs" / run_id / "search_results.jsonl"
+    assert '"title": "First"' in jsonl.read_text()
+    collection_dir = tmp_path / "data" / "articles" / "sciencedirect" / "searches" / "q_yany-any"
+    assert (collection_dir / "urls.txt").read_text() == "https://www.sciencedirect.com/science/article/pii/S123"
+    assert '"title": "First"' in (collection_dir / "articles.jsonl").read_text()
+    run_json = json.loads((tmp_path / "data" / "runs" / run_id / "run.json").read_text())
+    assert run_json["options"]["collection_slug"] == "q_yany-any"
+
+
+def test_search_result_handler_writes_explicit_compat_urls_file(tmp_path, monkeypatch):
+    import main
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    monkeypatch.chdir(tmp_path)
+    storage = StorageManager(tmp_path / "data", site="sciencedirect")
+    run_id = storage.create_run(site="sciencedirect", query="q", run_type="search")
+    args = types.SimpleNamespace(output_urls="custom_urls.txt", crawl=False)
+
+    main._handle_search_results([
+        SearchResult(url="https://www.sciencedirect.com/science/article/pii/S123", title="First", year="2025")
+    ], cm=None, args=args, storage=storage, run_id=run_id)
+
+    assert (tmp_path / "custom_urls.txt").read_text() == "https://www.sciencedirect.com/science/article/pii/S123"
+    assert (tmp_path / "data" / "runs" / run_id / "urls.txt").exists()
+
+
+def test_crawl_file_from_run_reuses_existing_collection(tmp_path, monkeypatch):
+    import main
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path / "data")
+    storage = StorageManager(tmp_path / "data", site="sciencedirect")
+    run_id = storage.create_run(site="sciencedirect", query="q", run_type="search")
+    collection_id = storage.create_or_get_collection(site="sciencedirect", query="q")
+    storage.attach_run_to_collection(run_id, collection_id)
+    storage.save_run_urls(run_id, ["https://www.sciencedirect.com/science/article/pii/S123"])
+    storage.add_collection_search_results(collection_id, [
+        SearchResult(url="https://www.sciencedirect.com/science/article/pii/S123", title="First", year="2025")
+    ])
+
+    args = types.SimpleNamespace(
+        file=str(tmp_path / "data" / "runs" / run_id / "urls.txt"),
+        url=None,
+        site="sciencedirect",
+        query="",
+        year_from=None,
+        year_to=None,
+        max=1,
+        html=True,
+        pdf=False,
+        figures=False,
+        tables=False,
+        fulltext=True,
+        asset_browser_fallback=True,
+        max_figure_candidates_per_figure=4,
+        min_image_bytes=1000,
+        asset_timeout=30,
+        inject_browser_cookies=False,
+    )
+
+    reused = main._collection_for_crawl(storage, args, site="sciencedirect", urls=[
+        "https://www.sciencedirect.com/science/article/pii/S123"
+    ])
+
+    assert reused == collection_id

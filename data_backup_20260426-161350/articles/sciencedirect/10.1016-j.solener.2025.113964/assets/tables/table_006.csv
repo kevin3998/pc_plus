@@ -1,0 +1,8 @@
+"Parameter","Conductivity vs. Transparency Trade-off","Flexibility and Mechanical Robustness","Stability Under Operational Conditions","Influence on Overall Device Performance","Reference:"
+"FTO","Good conductivity, moderate transparency","Poor (brittle, cracks easily)","Good (stable but can degrade under mechanical stress)","Good (effective but limited by flexibility)","[ 38 ]"
+"ITO","Excellent conductivity, high transparency","Moderate (prone to cracking under strain)","Good (can degrade under mechanical stress)","Excellent (standard TCO for high performance)","[ 38 ]"
+"IZO","Good conductivity, high transparency","Good (better flexibility than ITO)","Good (stable but require encapsulation)","Excellent (high performance and flexibility)","[ 45 ]"
+"AZO","Good conductivity, high transparency","Good (better flexibility than ITO)","Moderate (may degrade under UV exposure)","Good (cost-effective and competitive performance)","[ 96 ]"
+"In2O3","Good conductivity, high transparency","Excellent (stable under mechanical stress)","Good (Corrosion resistant, stable under various conditions)","Good (effective and stable in multiple conditions)","[ 32 ]"
+"GZO","Good conductivity, high transparency","Good (flexible and robust)","Good (effective and stable in multiple conditions","Good (Promising for flexible applications)","[ 46 ]"
+"ZnO","Good conductivity, high transparency","Moderate to good (better flexibility than ITO)","Good (stable, but requires encapsulation)","Excellent (high performance and flexibility)","[ 97 ]"

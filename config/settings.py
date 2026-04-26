@@ -1,13 +1,17 @@
-"""全局配置：当前主线只支持 ScienceDirect + Patchright 浏览器。"""
+"""全局配置。"""
 
 import os
 from pathlib import Path
+
+from sites.registry import site_configs
 
 # ═══════════════════════════════════════════════════
 #  路径
 # ═══════════════════════════════════════════════════
 ROOT_DIR    = Path(__file__).parent.parent
 OUTPUT_DIR  = ROOT_DIR / "output"
+DATA_DIR    = ROOT_DIR / "data"
+CATALOG_DB  = DATA_DIR / "catalog.sqlite"
 COOKIE_FILE = ROOT_DIR / "cookies.json"
 LOG_DIR     = ROOT_DIR / "logs"
 STATE_FILE  = ROOT_DIR / "crawl_state.json"   # 断点续爬状态
@@ -31,9 +35,6 @@ DEFAULT_USER_AGENT = os.getenv(
 #  站点配置
 # ═══════════════════════════════════════════════════
 JOURNAL_CONFIGS = {
-    "sciencedirect": {
-        "name": "ScienceDirect (Elsevier)",
-        "search_base": "https://www.sciencedirect.com/search",
-        "article_pattern": r"sciencedirect\.com/science/article/",
-    },
+    key: value
+    for key, value in site_configs().items()
 }

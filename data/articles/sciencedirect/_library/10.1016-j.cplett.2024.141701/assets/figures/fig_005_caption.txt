@@ -1,0 +1,1 @@
+Fig. 4. (a-b) EMI SE performance of AgNWs-r, AgNWs-u, AgNWs-o, AgNWs-r/GO-1, AgNWs-u/GO-1 and AgNWs-o/GO-1 films with average SER, SEAand SETvalues (c-d) EMI SE performance of AgNWs-o/GO films with average SER, SEAand SETvalues when the GO surface density is different.

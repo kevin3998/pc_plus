@@ -523,3 +523,435 @@ Exception: Connection closed while reading from the driver
   → 跳过:   0
 ────────────────────────────────────────
 12:57:36 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+13:46:22 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+13:46:22 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+13:46:26 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+13:47:11 [INFO    ] browser: Patchright 浏览器已关闭
+13:47:18 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+13:47:18 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+13:47:19 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+13:47:19 [INFO    ] browser_search: 
+════════════════════════════════════════════════════════════
+  浏览器检索: [sciencedirect] transparent conductive oxide
+  时间: 2024 – 2025
+  上限: 5 篇
+════════════════════════════════════════════════════════════
+13:47:41 [INFO    ] browser_search:   [SD/browser] 第 1 页 | 新增 25 篇 | 共 5 篇
+13:48:05 [INFO    ] browser: Patchright 浏览器已关闭
+13:48:05 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-134718-864662-sciencedirect-search-a9c3f7
+13:48:21 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+13:48:21 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-134821-605048-sciencedirect-crawl-128c6e
+13:48:21 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+13:48:21 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+13:48:23 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+13:48:23 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S0925838825051692
+13:48:47 [INFO    ] parser:   标题: Ultraviolet-transparent conductive electrodes based on oxide/Ag/oxide 
+13:48:47 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+13:48:47 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+13:48:47 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+13:48:47 [INFO    ] parser:   ✓ 完成: 10.1016-j.jallcom.2025.183608
+13:48:47 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0038092X25007273
+13:49:06 [INFO    ] parser:   标题: Transparent conductive oxides in flexible perovskite solar cells – mat
+13:49:06 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+13:49:06 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+13:49:06 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+13:49:06 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+13:49:06 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+13:49:06 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+13:49:06 [INFO    ] parser:   ✓ 完成: 10.1016-j.solener.2025.113964
+13:49:06 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S1369800125003142
+13:49:23 [INFO    ] parser:   标题: Recent development and challenges of flexible perovskite transparent c
+13:49:24 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+13:49:24 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+13:49:24 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+13:49:24 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+13:49:24 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+13:49:24 [INFO    ] storage:     ✓ 表 6 已保存  Table 6
+13:49:24 [INFO    ] parser:   ✓ 完成: 10.1016-j.mssp.2025.109577
+13:49:24 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0927024825004362
+13:49:41 [INFO    ] parser:   标题: Zinc-tin oxide transparent conductive layers via reactive plasma depos
+13:49:41 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+13:49:41 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+13:49:41 [INFO    ] storage:     ✓ 表 3 已保存  Table 3
+13:49:41 [INFO    ] storage:     ✓ 表 4 已保存  Table 4
+13:49:41 [INFO    ] storage:     ✓ 表 5 已保存  Table 5
+13:49:41 [INFO    ] parser:   ✓ 完成: 10.1016-j.solmat.2025.113835
+13:49:41 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S0040609025001439
+13:49:58 [INFO    ] parser:   标题: Effects of UV ns laser annealing on the electrical and microstructural
+13:49:58 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+13:49:58 [INFO    ] parser:   ✓ 完成: 10.1016-j.tsf.2025.140743
+13:49:59 [INFO    ] browser: Patchright 浏览器已关闭
+13:49:59 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+13:49:59 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-134821-605048-sciencedirect-crawl-128c6e
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+14:14:11 [INFO    ] cookie: 已加载 26 个Cookie (来自文件)
+14:14:11 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+14:14:13 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+14:14:35 [INFO    ] sites.springer:   [Springer/browser] 第 1 页 | 新增 20 篇 | 共 5 篇
+14:14:59 [INFO    ] browser: Patchright 浏览器已关闭
+14:14:59 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-141411-246247-springer-search-b9f2d3
+14:15:14 [INFO    ] cookie: 已加载 47 个Cookie (来自文件)
+14:15:14 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-141514-752551-springer-crawl-515a62
+14:15:14 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+14:15:14 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+14:15:16 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+14:15:16 [INFO    ] main: 
+[1/5] https://link.springer.com/article/10.1007/s10854-025-15201-3
+14:15:42 [INFO    ] parser:   标题: Highly reliable strontium tin oxide/copper nanowire composite flexible
+14:15:44 [INFO    ] storage:     ✓ 图 1 已保存 (76 KB) 
+14:15:46 [INFO    ] storage:     ✓ 图 2 已保存 (20 KB) 
+14:15:48 [INFO    ] storage:     ✓ 图 3 已保存 (42 KB) 
+14:15:50 [INFO    ] storage:     ✓ 图 4 已保存 (18 KB) 
+14:15:51 [INFO    ] storage:     ✓ 图 5 已保存 (17 KB) 
+14:15:53 [INFO    ] storage:     ✓ 图 6 已保存 (18 KB) 
+14:15:55 [INFO    ] storage:     ✓ 图 7 已保存 (17 KB) 
+14:15:56 [INFO    ] storage:     ✓ 图 8 已保存 (18 KB) 
+14:15:56 [INFO    ] parser:     共提取 8 张图片
+14:15:56 [INFO    ] parser:     PDF: 尝试下载 https://link.springer.com/content/pdf/10.1007/s10854-025-15201-3.pdf
+14:15:58 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+14:15:58 [INFO    ] parser:   ✓ 完成: 10.1007-s10854-025-15201-3
+14:15:58 [INFO    ] main: 
+[2/5] https://link.springer.com/article/10.1007/s00339-025-08628-2
+14:16:22 [INFO    ] parser:   标题: Effect of tin oxide coating on physical properties of silver nanowire 
+14:16:24 [INFO    ] storage:     ✓ 图 1 已保存 (66 KB) 
+14:16:26 [INFO    ] storage:     ✓ 图 2 已保存 (66 KB) 
+14:16:28 [INFO    ] storage:     ✓ 图 3 已保存 (26 KB) 
+14:16:30 [INFO    ] storage:     ✓ 图 4 已保存 (46 KB) 
+14:16:32 [INFO    ] storage:     ✓ 图 5 已保存 (86 KB) 
+14:16:34 [INFO    ] storage:     ✓ 图 6 已保存 (44 KB) 
+14:16:36 [INFO    ] storage:     ✓ 图 7 已保存 (51 KB) 
+14:16:39 [INFO    ] storage:     ✓ 图 8 已保存 (86 KB) 
+14:16:41 [INFO    ] storage:     ✓ 图 9 已保存 (130 KB) 
+14:16:41 [INFO    ] parser:     共提取 9 张图片
+14:16:41 [INFO    ] parser:     PDF: 尝试下载 https://link.springer.com/content/pdf/10.1007/s00339-025-08628-2.pdf
+14:16:43 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+14:16:43 [INFO    ] parser:   ✓ 完成: 10.1007-s00339-025-08628-2
+14:16:43 [INFO    ] main: 
+[3/5] https://link.springer.com/article/10.1007/s10854-025-14631-3
+14:17:05 [INFO    ] parser:   标题: Chemometric optimization of the CdO superhydrophobic thin film coating
+14:17:12 [INFO    ] storage:     ✓ 图 1 已保存 (100 KB) 
+14:17:16 [INFO    ] storage:     ✓ 图 2 已保存 (850 KB) 
+14:17:19 [INFO    ] storage:     ✓ 图 3 已保存 (418 KB) 
+14:17:23 [INFO    ] storage:     ✓ 图 4 已保存 (550 KB) 
+14:17:25 [INFO    ] storage:     ✓ 图 5 已保存 (107 KB) 
+14:17:28 [INFO    ] storage:     ✓ 图 6 已保存 (110 KB) 
+14:17:31 [INFO    ] storage:     ✓ 图 7 已保存 (759 KB) 
+14:17:35 [INFO    ] storage:     ✓ 图 8 已保存 (779 KB) 
+14:17:38 [INFO    ] storage:     ✓ 图 9 已保存 (280 KB) 
+14:17:40 [INFO    ] storage:     ✓ 图 10 已保存 (77 KB) 
+14:17:43 [INFO    ] storage:     ✓ 图 11 已保存 (327 KB) 
+14:17:45 [INFO    ] storage:     ✓ 图 12 已保存 (328 KB) 
+14:17:49 [INFO    ] storage:     ✓ 图 13 已保存 (323 KB) 
+14:17:49 [INFO    ] parser:     共提取 13 张图片
+14:17:49 [INFO    ] parser:     PDF: 尝试下载 https://link.springer.com/content/pdf/10.1007/s10854-025-14631-3.pdf
+14:17:54 [INFO    ] storage:     ✓ PDF 已保存 (5502 KB)
+14:17:54 [INFO    ] parser:   ✓ 完成: 10.1007-s10854-025-14631-3
+14:17:54 [INFO    ] main: 
+[4/5] https://link.springer.com/article/10.1007/s44275-024-00025-w
+14:18:18 [INFO    ] parser:   标题: Investigating single-molecule fluorescence quenching and molecular mot
+14:18:20 [INFO    ] storage:     ✓ 图 1 已保存 (231 KB) 
+14:18:23 [INFO    ] storage:     ✓ 图 2 已保存 (157 KB) 
+14:18:25 [INFO    ] storage:     ✓ 图 3 已保存 (66 KB) 
+14:18:28 [INFO    ] storage:     ✓ 图 4 已保存 (130 KB) 
+14:18:30 [INFO    ] storage:     ✓ 图 5 已保存 (91 KB) 
+14:18:30 [INFO    ] parser:     共提取 5 张图片
+14:18:30 [INFO    ] parser:     PDF: 尝试下载 https://link.springer.com/content/pdf/10.1007/s44275-024-00025-w.pdf
+14:18:35 [INFO    ] storage:     ✓ PDF 已保存 (1724 KB)
+14:18:35 [INFO    ] parser:   ✓ 完成: 10.1007-s44275-024-00025-w
+14:18:35 [INFO    ] main: 
+[5/5] https://link.springer.com/article/10.1007/s12206-025-0324-0
+14:18:57 [INFO    ] parser:   标题: High aspect ratio metal mesh based transparent conductive film
+14:19:00 [INFO    ] storage:     ✓ 图 1 已保存 (2 KB) 
+14:19:01 [INFO    ] storage:     ✓ 图 2 已保存 (6 KB) 
+14:19:02 [INFO    ] storage:     ✓ 图 3 已保存 (25 KB) 
+14:19:03 [INFO    ] storage:     ✓ 图 4 已保存 (7 KB) 
+14:19:03 [INFO    ] parser:     共提取 4 张图片
+14:19:03 [INFO    ] parser:     PDF: 尝试下载 https://link.springer.com/content/pdf/10.1007/s12206-025-0324-0.pdf
+14:19:05 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+14:19:05 [INFO    ] parser:   ✓ 完成: 10.1007-s12206-025-0324-0
+14:19:05 [INFO    ] browser: Patchright 浏览器已关闭
+14:19:05 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+14:19:05 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-141514-752551-springer-crawl-515a62
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+14:56:45 [INFO    ] cookie: 已加载 64 个Cookie (来自文件)
+14:56:45 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+14:56:47 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+14:58:00 [INFO    ] browser: Patchright 浏览器已关闭
+14:59:18 [INFO    ] cookie: 已加载 64 个Cookie (来自文件)
+14:59:18 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+14:59:20 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+14:59:43 [INFO    ] sites.sciencedirect:   [SD/browser] 第 1 页 | 新增 25 篇 | 共 5 篇
+15:00:04 [INFO    ] browser: Patchright 浏览器已关闭
+15:00:04 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-145918-731857-sciencedirect-search-340a98
+15:00:20 [INFO    ] cookie: 已加载 64 个Cookie (来自文件)
+15:00:20 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-150020-470568-sciencedirect-crawl-95e206
+15:00:20 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+15:00:20 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+15:00:22 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+15:00:22 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S2214860424004342
+15:00:45 [INFO    ] parser:   标题: Additive manufacturing of transparent conductive indium tin oxide by s
+15:00:48 [INFO    ] parser:     共提取 0 张图片
+15:00:48 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+15:00:48 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S2214860424004342/pd
+15:00:48 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S2214860424004342/pd
+15:00:48 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+15:00:48 [INFO    ] parser:   ✓ 完成: 10.1016-j.addma.2024.104388
+15:00:48 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0009261424006432
+15:01:06 [INFO    ] parser:   标题: Flexible, transparent, and low-temperature usable electromagnetic shie
+15:01:09 [INFO    ] parser:     共提取 0 张图片
+15:01:09 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0009261424006432/pd
+15:01:09 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0009261424006432/pd
+15:01:09 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+15:01:09 [INFO    ] parser:   ✓ 完成: 10.1016-j.cplett.2024.141701
+15:01:09 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S0254058424006011
+15:01:27 [INFO    ] parser:   标题: Sb-doped tin oxide nanonets for improved conductivity in transparent c
+15:01:30 [INFO    ] parser:     共提取 0 张图片
+15:01:30 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+15:01:30 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0254058424006011/pd
+15:01:31 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0254058424006011/pd
+15:01:31 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+15:01:31 [INFO    ] parser:   ✓ 完成: 10.1016-j.matchemphys.2024.129476
+15:01:31 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0925346724010334
+15:01:48 [INFO    ] parser:   标题: Investigation on optical and electrical properties of multilayer ITO/A
+15:01:51 [INFO    ] parser:     共提取 0 张图片
+15:01:51 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+15:01:51 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+15:01:51 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0925346724010334/pd
+15:01:51 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S0925346724010334/pd
+15:01:51 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+15:01:51 [INFO    ] parser:   ✓ 完成: 10.1016-j.optmat.2024.115850
+15:01:51 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S1385894724023155
+15:02:11 [INFO    ] parser:   标题: Scalable one-step synthesis of reduced graphene oxide: Towards flexibl
+15:02:19 [INFO    ] parser:     共提取 0 张图片
+15:02:19 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S1385894724023155/pd
+15:02:20 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S1385894724023155/pd
+15:02:20 [INFO    ] parser:     PDF: 无权限或下载失败（需机构订阅）
+15:02:20 [INFO    ] parser:   ✓ 完成: 10.1016-j.cej.2024.150828
+15:02:20 [INFO    ] browser: Patchright 浏览器已关闭
+15:02:20 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 5
+  ✗ 失败: 0
+  → 跳过: 0
+══════════════════════════════════════════════════
+15:02:20 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-150020-470568-sciencedirect-crawl-95e206
+  任务总计: 5
+  ✓ 完成:   5
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   0
+────────────────────────────────────────
+15:36:14 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+15:36:14 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-153614-814176-sciencedirect-crawl-e1d3e2
+15:36:14 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+15:36:14 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+15:36:16 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+15:36:16 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S2214860424004342
+15:36:16 [INFO    ] main:   ↩ 已存在，跳过
+15:36:16 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0009261424006432
+15:36:16 [INFO    ] main:   ↩ 已存在，跳过
+15:36:16 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S0254058424006011
+15:36:16 [INFO    ] main:   ↩ 已存在，跳过
+15:36:16 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0925346724010334
+15:36:16 [INFO    ] main:   ↩ 已存在，跳过
+15:36:16 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S1385894724023155
+15:36:16 [INFO    ] main:   ↩ 已存在，跳过
+15:36:17 [INFO    ] browser: Patchright 浏览器已关闭
+15:36:17 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 0
+  ✗ 失败: 0
+  → 跳过: 5
+══════════════════════════════════════════════════
+15:36:17 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-153614-814176-sciencedirect-crawl-e1d3e2
+  任务总计: 5
+  ✓ 完成:   0
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   5
+────────────────────────────────────────
+16:15:32 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+16:15:32 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+16:15:34 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+16:18:09 [INFO    ] browser: Patchright 浏览器已关闭
+16:19:16 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+16:19:16 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+16:19:18 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+16:19:41 [INFO    ] sites.sciencedirect:   [SD/browser] 第 1 页 | 新增 25 篇 | 共 5 篇
+16:20:03 [INFO    ] browser: Patchright 浏览器已关闭
+16:20:03 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-161916-436839-sciencedirect-search-4de3a8
+16:23:46 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+16:23:46 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-162346-854413-sciencedirect-crawl-e521da
+16:23:46 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+16:23:46 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+16:23:48 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+16:23:48 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S2214860424004342
+16:24:12 [INFO    ] parser:   标题: Additive manufacturing of transparent conductive indium tin oxide by s
+16:24:14 [INFO    ] storage:     ✓ 图 1 已保存 (55 KB) Fig. 1
+16:24:16 [INFO    ] storage:     ✓ 图 2 已保存 (24 KB) Fig. 2
+16:24:17 [INFO    ] storage:     ✓ 图 3 已保存 (48 KB) Fig. 3
+16:24:19 [INFO    ] storage:     ✓ 图 4 已保存 (75 KB) Fig. 4
+16:24:21 [INFO    ] storage:     ✓ 图 5 已保存 (180 KB) Fig. 5
+16:24:22 [INFO    ] storage:     ✓ 图 6 已保存 (44 KB) Fig. 6
+16:24:22 [INFO    ] parser:     共提取 6 张图片
+16:24:22 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+16:24:22 [INFO    ] parser:     PDF: 尝试下载 https://www.sciencedirect.com/science/article/pii/S2214860424004342/pd
+16:24:42 [INFO    ] main: 
+用户中断，保存进度后退出...
+16:24:42 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-162346-854413-sciencedirect-crawl-e521da
+  任务总计: 5
+  ✓ 完成:   0
+  ✗ 失败:   0
+  ↻ 待处理: 5
+  → 跳过:   0
+────────────────────────────────────────
+16:24:48 [ERROR   ] asyncio: Task was destroyed but it is pending!
+task: <Task pending name='Task-22' coro=<BrowserContext.cookies() running at /opt/anaconda3/envs/pc_plus/lib/python3.12/site-packages/patchright/_impl/_browser_context.py:303> cb=[SyncBase._sync.<locals>.<lambda>() at /opt/anaconda3/envs/pc_plus/lib/python3.12/site-packages/patchright/_impl/_sync_base.py:90]>
+16:24:48 [ERROR   ] asyncio: Task was destroyed but it is pending!
+task: <Task pending name='Task-21' coro=<Page.close() running at /opt/anaconda3/envs/pc_plus/lib/python3.12/site-packages/patchright/_impl/_page.py:783> cb=[SyncBase._sync.<locals>.<lambda>() at /opt/anaconda3/envs/pc_plus/lib/python3.12/site-packages/patchright/_impl/_sync_base.py:90]>
+16:24:48 [ERROR   ] asyncio: Task was destroyed but it is pending!
+task: <Task pending name='Task-19' coro=<Waiter.reject_on_timeout.<locals>.reject() running at /opt/anaconda3/envs/pc_plus/lib/python3.12/site-packages/patchright/_impl/_waiter.py:65> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+16:24:50 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+16:25:04 [INFO    ] cookie: 已加载 66 个Cookie (来自文件)
+16:25:04 [INFO    ] storage: 注册 5 个URL到任务队列 run=20260426-162504-366172-sciencedirect-crawl-520e44
+16:25:04 [INFO    ] main: 浏览器待处理: 5 / 5 篇
+16:25:04 [INFO    ] browser: 正在启动 Patchright Chrome 浏览器...
+16:25:06 [INFO    ] browser: ✓ Patchright 浏览器已就绪
+16:25:06 [INFO    ] main: 
+[1/5] https://www.sciencedirect.com/science/article/pii/S2214860424004342
+16:25:06 [INFO    ] main:   ↩ 已存在，跳过
+16:25:06 [INFO    ] main: 
+[2/5] https://www.sciencedirect.com/science/article/pii/S0009261424006432
+16:25:29 [INFO    ] parser:   标题: Flexible, transparent, and low-temperature usable electromagnetic shie
+16:25:31 [INFO    ] storage:     ✓ 图 1 已保存 (21 KB) 
+16:25:33 [INFO    ] storage:     ✓ 图 2 已保存 (150 KB) Fig. 1
+16:25:34 [INFO    ] storage:     ✓ 图 3 已保存 (35 KB) Fig. 2
+16:25:35 [INFO    ] storage:     ✓ 图 4 已保存 (22 KB) Fig. 3
+16:25:37 [INFO    ] storage:     ✓ 图 5 已保存 (97 KB) Fig. 4
+16:25:38 [INFO    ] storage:     ✓ 图 6 已保存 (35 KB) Fig. 5
+16:25:39 [INFO    ] storage:     ✓ 图 7 已保存 (104 KB) Fig. 6
+16:25:41 [INFO    ] storage:     ✓ 图 8 已保存 (101 KB) Fig. 7
+16:25:41 [INFO    ] parser:     共提取 8 张图片
+16:25:41 [INFO    ] parser:   ✓ 完成: 10.1016-j.cplett.2024.141701
+16:25:41 [INFO    ] main: 
+[3/5] https://www.sciencedirect.com/science/article/pii/S0254058424006011
+16:25:59 [INFO    ] parser:   标题: Sb-doped tin oxide nanonets for improved conductivity in transparent c
+16:26:01 [INFO    ] storage:     ✓ 图 1 已保存 (94 KB) 
+16:26:03 [INFO    ] storage:     ✓ 图 2 已保存 (110 KB) Fig. 1
+16:26:05 [INFO    ] storage:     ✓ 图 3 已保存 (329 KB) Fig. 2
+16:26:06 [INFO    ] storage:     ✓ 图 4 已保存 (148 KB) Fig. 3
+16:26:08 [INFO    ] storage:     ✓ 图 5 已保存 (122 KB) Fig. 4
+16:26:10 [INFO    ] storage:     ✓ 图 6 已保存 (142 KB) Fig. 5
+16:26:12 [INFO    ] storage:     ✓ 图 7 已保存 (67 KB) Fig. 6
+16:26:14 [INFO    ] storage:     ✓ 图 8 已保存 (136 KB) Fig. 7
+16:26:15 [INFO    ] storage:     ✓ 图 9 已保存 (100 KB) Fig. 8
+16:26:15 [INFO    ] parser:     共提取 9 张图片
+16:26:15 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+16:26:15 [INFO    ] parser:   ✓ 完成: 10.1016-j.matchemphys.2024.129476
+16:26:15 [INFO    ] main: 
+[4/5] https://www.sciencedirect.com/science/article/pii/S0925346724010334
+16:26:33 [INFO    ] parser:   标题: Investigation on optical and electrical properties of multilayer ITO/A
+16:26:34 [INFO    ] storage:     ✓ 图 1 已保存 (112 KB) 
+16:26:36 [INFO    ] storage:     ✓ 图 2 已保存 (138 KB) Fig. 1
+16:26:38 [INFO    ] storage:     ✓ 图 3 已保存 (121 KB) Fig. 2
+16:26:40 [INFO    ] storage:     ✓ 图 4 已保存 (139 KB) Fig. 3
+16:26:42 [INFO    ] storage:     ✓ 图 5 已保存 (140 KB) Fig. 4
+16:26:43 [INFO    ] storage:     ✓ 图 6 已保存 (139 KB) Fig. 5
+16:26:43 [INFO    ] parser:     共提取 6 张图片
+16:26:43 [INFO    ] storage:     ✓ 表 1 已保存  Table 1
+16:26:43 [INFO    ] storage:     ✓ 表 2 已保存  Table 2
+16:26:43 [INFO    ] parser:   ✓ 完成: 10.1016-j.optmat.2024.115850
+16:26:43 [INFO    ] main: 
+[5/5] https://www.sciencedirect.com/science/article/pii/S1385894724023155
+16:27:06 [INFO    ] parser:   标题: Scalable one-step synthesis of reduced graphene oxide: Towards flexibl
+16:27:07 [INFO    ] storage:     ✓ 图 1 已保存 (29 KB) 
+16:27:09 [INFO    ] storage:     ✓ 图 2 已保存 (27 KB) Scheme 1
+16:27:10 [INFO    ] storage:     ✓ 图 3 已保存 (29 KB) Fig. 1
+16:27:11 [INFO    ] storage:     ✓ 图 4 已保存 (19 KB) Fig. 2
+16:27:13 [INFO    ] storage:     ✓ 图 5 已保存 (29 KB) Fig. 3
+16:27:14 [INFO    ] storage:     ✓ 图 6 已保存 (21 KB) Fig. 4
+16:27:15 [INFO    ] storage:     ✓ 图 7 已保存 (50 KB) Fig. 5
+16:27:17 [INFO    ] storage:     ✓ 图 8 已保存 (39 KB) Fig. 6
+16:27:18 [INFO    ] storage:     ✓ 图 9 已保存 (28 KB) Fig. 7
+16:27:20 [INFO    ] storage:     ✓ 图 10 已保存 (195 KB) Fig. 8
+16:27:22 [INFO    ] storage:     ✓ 图 11 已保存 (89 KB) Fig. 9
+16:27:24 [INFO    ] storage:     ✓ 图 12 已保存 (91 KB) Fig. 10
+16:27:26 [INFO    ] storage:     ✓ 图 13 已保存 (85 KB) Fig. 11
+16:27:27 [INFO    ] storage:     ✓ 图 14 已保存 (25 KB) Fig. 12
+16:27:29 [INFO    ] storage:     ✓ 图 15 已保存 (54 KB) Fig. 13
+16:27:30 [INFO    ] storage:     ✓ 图 16 已保存 (40 KB) Fig. 14
+16:27:32 [INFO    ] storage:     ✓ 图 17 已保存 (17 KB) Fig. 15
+16:27:34 [INFO    ] storage:     ✓ 图 18 已保存 (27 KB) Fig. 16
+16:27:35 [INFO    ] storage:     ✓ 图 19 已保存 (39 KB) Fig. 17
+16:27:36 [INFO    ] storage:     ✓ 图 20 已保存 (21 KB) Fig. 18
+16:27:38 [INFO    ] storage:     ✓ 图 21 已保存 (27 KB) Fig. 19
+16:27:39 [INFO    ] storage:     ✓ 图 22 已保存 (44 KB) Scheme 2
+16:27:39 [INFO    ] parser:     共提取 22 张图片
+16:27:39 [INFO    ] parser:   ✓ 完成: 10.1016-j.cej.2024.150828
+16:27:39 [INFO    ] browser: Patchright 浏览器已关闭
+16:27:39 [INFO    ] main: 
+══════════════════════════════════════════════════
+  浏览器爬取完成
+  ✓ 成功: 4
+  ✗ 失败: 0
+  → 跳过: 1
+══════════════════════════════════════════════════
+16:27:39 [INFO    ] storage: 
+────────────────────────────────────────
+  Run: 20260426-162504-366172-sciencedirect-crawl-520e44
+  任务总计: 5
+  ✓ 完成:   4
+  ✗ 失败:   0
+  ↻ 待处理: 0
+  → 跳过:   1
+────────────────────────────────────────

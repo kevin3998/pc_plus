@@ -23,6 +23,7 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
+from core.assets import AssetCandidate, AssetDownloader, extension_from_url_or_type
 from core.storage import StorageManager
 from config.settings import (
     DOWNLOAD_FIGURES, DOWNLOAD_TABLES,
@@ -63,9 +64,11 @@ class ArticleParser:
         "[class*='comment']", "[class*='toc']",
     ]
 
-    def __init__(self, session, storage: StorageManager):
+    def __init__(self, session, storage: StorageManager, adapter=None, browser=None):
         self.session = session
         self.storage = storage
+        self.adapter = adapter
+        self.browser = browser
 
     # ─────────────────────────────────────────────
     #  入口
@@ -111,11 +114,13 @@ class ArticleParser:
         # ── 正文 ────────────────────────────────
         if opts["fulltext"]:
             md = self._extract_fulltext(soup)
+            if abstract:
+                md = self._prepend_abstract(md, abstract)
             self.storage.save_fulltext(adir, md)
 
         # ── 图片 ────────────────────────────────
         if opts["figures"]:
-            self._extract_figures(soup, adir, url)
+            self._extract_figures(soup, adir, url, opts)
 
         # ── 表格 ────────────────────────────────
         if opts["tables"]:
@@ -123,7 +128,7 @@ class ArticleParser:
 
         # ── PDF ─────────────────────────────────
         if opts["pdf"]:
-            self._try_download_pdf(soup, adir, url)
+            self._try_download_pdf(soup, adir, url, opts)
 
         log.info(f"  ✓ 完成: {adir.name}")
         return True
@@ -220,6 +225,16 @@ class ArticleParser:
     #  摘要
     # ─────────────────────────────────────────────
     def _extract_abstract(self, soup: BeautifulSoup) -> str:
+        sciencedirect_nodes = [
+            node for node in soup.select("div.Abstracts div.abstract.author")
+            if "author-highlights" not in node.get("class", [])
+            and "graphical" not in node.get("class", [])
+        ]
+        for node in sciencedirect_nodes:
+            text = _node_text_without_heading(node)
+            if text:
+                return text
+
         candidates = [
             "div[class*='abstract'] p",
             "section[class*='abstract'] p",
@@ -233,6 +248,18 @@ class ArticleParser:
             if els:
                 return "\n".join(e.get_text(separator=" ", strip=True) for e in els)
         return ""
+
+    @staticmethod
+    def _prepend_abstract(markdown: str, abstract: str) -> str:
+        abstract = abstract.strip()
+        markdown = markdown.strip()
+        if not abstract:
+            return markdown
+        if abstract in markdown[: max(1000, len(abstract) + 100)]:
+            return markdown
+        if markdown:
+            return f"## Abstract\n\n{abstract}\n\n{markdown}"
+        return f"## Abstract\n\n{abstract}"
 
     # ─────────────────────────────────────────────
     #  正文 → Markdown
@@ -305,74 +332,60 @@ class ArticleParser:
     # ─────────────────────────────────────────────
     #  图片提取
     # ─────────────────────────────────────────────
-    def _extract_figures(self, soup: BeautifulSoup, adir, page_url: str):
-        figures = soup.select("figure, div[class*='figure'], div[class*='fig-']")
-        if not figures:
-            # 回退：找所有内嵌图片
-            figures = [None]  # 触发后备逻辑
-
+    def _extract_figures(self, soup: BeautifulSoup, adir, page_url: str, options: dict | None = None):
+        opts = _content_options(options)
+        candidates = self._figure_candidates(soup, page_url, opts["max_figure_candidates_per_figure"])
+        downloader = AssetDownloader(
+            self.session,
+            browser=self.browser,
+            browser_fallback=opts["asset_browser_fallback"],
+            timeout=opts["asset_timeout"],
+            min_image_bytes=opts["min_image_bytes"],
+        )
         count = 0
-        seen_urls = set()
-
-        def _process_img(img_el, caption="", label=""):
-            nonlocal count
-            # 懒加载支持
-            src = (
-                img_el.get("src") or
-                img_el.get("data-src") or
-                img_el.get("data-lazy-src") or
-                img_el.get("data-original") or ""
+        completed_figures = set()
+        for candidate in candidates:
+            figure_key = (
+                candidate.label.strip().lower(),
+                candidate.caption.strip().lower(),
             )
-            # srcset 取最大分辨率
-            if not src:
-                srcset = img_el.get("srcset", "")
-                if srcset:
-                    parts = [p.strip().split() for p in srcset.split(",")]
-                    src = parts[-1][0] if parts else ""
-
-            if not src or src.startswith("data:"):
-                return
-
-            img_url = urljoin(page_url, src)
-            # 高清版本尝试
-            img_url = self._upgrade_img_url(img_url)
-
-            if img_url in seen_urls:
-                return
-            seen_urls.add(img_url)
-
-            data = self.session.download_binary(img_url, referer=page_url)
-            if not data or len(data) < 1000:   # 跳过占位图
-                return
-
-            ct = self.session._session.head(img_url, timeout=5).headers.get(
-                "Content-Type", "image/jpeg"
-            ) if False else "image/jpeg"   # 不额外发 HEAD，用扩展名判断
-
-            ext = _ext_from_url(img_url)
-            count += 1
-            self.storage.save_figure(adir, count, data, ext, caption, label)
-
-        for fig in figures:
-            if fig is None:
-                # 后备：找文章体内的 <img>
-                body = soup.select_one("article, main, div[class*='article']")
-                if body:
-                    for img in body.select("img"):
-                        _process_img(img)
-                break
-
-            cap_el = fig.select_one(
-                "figcaption, [class*='caption'], [class*='legend'], [class*='fig-caption']"
-            )
-            label_el = fig.select_one("[class*='label'], [class*='fig-num']")
-            caption = cap_el.get_text(strip=True) if cap_el else ""
-            label   = label_el.get_text(strip=True) if label_el else ""
-
-            for img in fig.select("img"):
-                _process_img(img, caption, label)
+            if figure_key in completed_figures:
+                continue
+            result = downloader.download_one(candidate, referer=page_url)
+            if result.status == "done" and result.data:
+                count += 1
+                ext = extension_from_url_or_type(candidate.url, result.content_type)
+                self.storage.save_figure(
+                    adir,
+                    count,
+                    result.data,
+                    ext,
+                    candidate.caption,
+                    candidate.label,
+                    source_url=result.url,
+                    content_type=result.content_type,
+                    method=result.method,
+                )
+                completed_figures.add(figure_key)
+            else:
+                self.storage.record_asset_failure(
+                    adir,
+                    asset_type="figure",
+                    source_url=candidate.url,
+                    error=result.error or "download_failed",
+                    content_type=result.content_type,
+                    caption=candidate.caption,
+                    label=candidate.label,
+                )
 
         log.info(f"    共提取 {count} 张图片")
+
+    def _figure_candidates(self, soup: BeautifulSoup, page_url: str, max_per_figure: int) -> list[AssetCandidate]:
+        if self.adapter and hasattr(self.adapter, "figure_candidates"):
+            return self.adapter.figure_candidates(page_url, soup, max_per_figure=max_per_figure)
+        from sites.base import SiteAdapter
+
+        return SiteAdapter().figure_candidates(page_url, soup, max_per_figure=max_per_figure)
 
     @staticmethod
     def _upgrade_img_url(url: str) -> str:
@@ -423,47 +436,44 @@ class ArticleParser:
     #  PDF 下载
     # ─────────────────────────────────────────────
     def _find_pdf_url(self, soup: BeautifulSoup, page_url: str) -> str:
-        # 优先 <meta name="citation_pdf_url">
-        el = soup.find("meta", attrs={"name": "citation_pdf_url"})
-        if el:
-            return el.get("content", "")
+        candidates = self._pdf_candidates(soup, page_url)
+        return candidates[0].url if candidates else ""
 
-        # 链接文本/class 匹配
-        for a in soup.select("a[href]"):
-            href = a.get("href", "")
-            text = a.get_text(strip=True).lower()
-            cls  = " ".join(a.get("class", [])).lower()
-            if (
-                ".pdf" in href.lower() or
-                "pdf" in cls or
-                text in ("pdf", "download pdf", "full pdf", "view pdf")
-            ):
-                return urljoin(page_url, href)
+    def _pdf_candidates(self, soup: BeautifulSoup, page_url: str) -> list[AssetCandidate]:
+        if self.adapter and hasattr(self.adapter, "pdf_candidates"):
+            return self.adapter.pdf_candidates(page_url, soup)
+        from sites.base import SiteAdapter
 
-        # URL 变换推断（常见模式）
-        parsed = urlparse(page_url)
-        path = parsed.path
-        # ScienceDirect: /science/article/pii/XXX → /science/article/pii/XXX/pdf
-        if "sciencedirect" in parsed.netloc:
-            return page_url.rstrip("/") + "/pdf"
-        # Springer: /article/10.xxx → /content/pdf/10.xxx.pdf
-        if "springer" in parsed.netloc:
-            doi_part = path.replace("/article/", "")
-            return f"https://link.springer.com/content/pdf/{doi_part}.pdf"
-        return ""
+        return SiteAdapter().pdf_candidates(page_url, soup)
 
-    def _try_download_pdf(self, soup: BeautifulSoup, adir, page_url: str):
-        pdf_url = self._find_pdf_url(soup, page_url)
-        if not pdf_url:
+    def _try_download_pdf(self, soup: BeautifulSoup, adir, page_url: str, options: dict | None = None):
+        opts = _content_options(options)
+        candidates = self._pdf_candidates(soup, page_url)
+        if not candidates:
             log.info("    PDF: 未找到下载链接")
             return
 
-        log.info(f"    PDF: 尝试下载 {pdf_url[:70]}")
-        data = self.session.download_binary(pdf_url, referer=page_url)
-        if data and data[:4] == b"%PDF":
-            self.storage.save_pdf(adir, data)
-        else:
-            log.info("    PDF: 无权限或下载失败（需机构订阅）")
+        downloader = AssetDownloader(
+            self.session,
+            browser=self.browser,
+            browser_fallback=opts["asset_browser_fallback"],
+            timeout=opts["asset_timeout"],
+            min_image_bytes=opts["min_image_bytes"],
+        )
+        for candidate in candidates:
+            log.info(f"    PDF: 尝试下载 {candidate.url[:70]}")
+            result = downloader.download_one(candidate, referer=page_url)
+            if result.status == "done" and result.data:
+                self.storage.save_pdf(adir, result.data, source_url=result.url, method=result.method)
+                return
+            self.storage.record_asset_failure(
+                adir,
+                asset_type="pdf",
+                source_url=candidate.url,
+                error=result.error or "download_failed",
+                content_type=result.content_type,
+            )
+        log.info("    PDF: 无权限或下载失败（需机构订阅）")
 
 
 # ─────────────────────────────────────────────
@@ -499,18 +509,32 @@ def _is_text_div(el: Tag) -> bool:
     return False
 
 
-def _content_options(options: dict | None) -> dict[str, bool]:
+def _node_text_without_heading(el: Tag) -> str:
+    clone = BeautifulSoup(str(el), "lxml")
+    for node in clone.select("h1, h2, h3, h4, h5, h6, figure, table, script, style"):
+        node.decompose()
+    return clone.get_text(separator=" ", strip=True)
+
+
+def _content_options(options: dict | None) -> dict:
     defaults = {
         "html": DOWNLOAD_HTML,
         "pdf": DOWNLOAD_PDF,
         "figures": DOWNLOAD_FIGURES,
         "tables": DOWNLOAD_TABLES,
         "fulltext": DOWNLOAD_FULLTEXT,
+        "asset_browser_fallback": True,
+        "max_figure_candidates_per_figure": 4,
+        "min_image_bytes": 1000,
+        "asset_timeout": 30,
     }
     if options is None:
         return defaults
     merged = defaults.copy()
     for key in merged:
         if key in options:
-            merged[key] = bool(options[key])
+            if isinstance(defaults[key], bool):
+                merged[key] = bool(options[key])
+            else:
+                merged[key] = options[key]
     return merged

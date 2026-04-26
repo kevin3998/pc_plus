@@ -5,6 +5,7 @@ Patchright browser backend for search pages that require real JS rendering.
 """
 
 import logging
+import base64
 import sys
 import time
 from pathlib import Path
@@ -63,6 +64,7 @@ class BrowserEngine:
             channel="chrome",
             headless=self.headless,
             no_viewport=True,
+            accept_downloads=True,
         )
         self._page = self._context.pages[0] if self._context.pages else self._context.new_page()
         if self.inject_cookies:
@@ -110,6 +112,92 @@ class BrowserEngine:
 
     def current_url(self) -> str:
         return self._page.url
+
+    def download_binary(self, url: str, referer: str = "", timeout: int = 30) -> dict:
+        if not self._context:
+            return {"status": 0, "content_type": "", "data": None, "error": "browser_not_started"}
+        context_result = self._download_with_context_request(url, referer=referer, timeout=timeout)
+        if not _should_try_page_download(url, context_result):
+            return context_result
+        download_result = self._download_with_page_event(url, timeout=timeout)
+        if download_result.get("data"):
+            return download_result
+        return context_result
+
+    def _download_with_context_request(self, url: str, referer: str = "", timeout: int = 30) -> dict:
+        headers = {}
+        if referer:
+            headers["Referer"] = referer
+        try:
+            response = self._context.request.get(
+                url,
+                headers=headers,
+                timeout=timeout * 1000,
+            )
+            headers_map = response.headers
+            return {
+                "status": response.status,
+                "content_type": headers_map.get("content-type", ""),
+                "data": response.body(),
+            }
+        except Exception as exc:
+            return self._download_with_page_fetch(url, referer=referer)
+
+    def _download_with_page_fetch(self, url: str, referer: str = "") -> dict:
+        if not self._page:
+            return {"status": 0, "content_type": "", "data": None, "error": "browser_not_started"}
+        try:
+            result = self._page.evaluate(
+                """
+                async ({url, referer}) => {
+                  const headers = {};
+                  if (referer) headers["Referer"] = referer;
+                  const response = await fetch(url, {headers, credentials: "include"});
+                  const buffer = await response.arrayBuffer();
+                  let binary = "";
+                  const bytes = new Uint8Array(buffer);
+                  const chunk = 0x8000;
+                  for (let i = 0; i < bytes.length; i += chunk) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+                  }
+                  return {
+                    status: response.status,
+                    content_type: response.headers.get("content-type") || "",
+                    data_b64: btoa(binary),
+                  };
+                }
+                """,
+                {"url": url, "referer": referer},
+            )
+            data = base64.b64decode(result.get("data_b64", "")) if result.get("data_b64") else None
+            return {
+                "status": result.get("status", 0),
+                "content_type": result.get("content_type", ""),
+                "data": data,
+            }
+        except Exception as exc:
+            return {"status": 0, "content_type": "", "data": None, "error": str(exc)}
+
+    def _download_with_page_event(self, url: str, timeout: int = 30) -> dict:
+        page = self._context.new_page()
+        try:
+            with page.expect_download(timeout=timeout * 1000) as download_info:
+                page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+            download = download_info.value
+            path = download.path()
+            data = Path(path).read_bytes() if path else None
+            return {
+                "status": 200 if data else 0,
+                "content_type": "application/pdf",
+                "data": data,
+            }
+        except Exception as exc:
+            return {"status": 0, "content_type": "", "data": None, "error": str(exc)}
+        finally:
+            try:
+                page.close()
+            except Exception:
+                pass
 
     def scroll_to_bottom(self):
         if not self._page:
@@ -202,3 +290,17 @@ class BrowserEngine:
             log.info(f"已注入 {len(cookies)} 个 Cookie 到 Patchright 上下文")
         except Exception as e:
             log.warning(f"Patchright Cookie 注入失败: {e}")
+
+
+def _should_try_page_download(url: str, result: dict) -> bool:
+    lower_url = url.lower()
+    if "/pdf" not in lower_url and "/pdfft" not in lower_url:
+        return False
+    content_type = (result.get("content_type") or "").lower()
+    data = result.get("data") or b""
+    if result.get("status") != 200:
+        return True
+    if "application/pdf" in content_type or data.startswith(b"%PDF"):
+        return False
+    prefix = data[:2000].lstrip().lower()
+    return "text/html" in content_type or prefix.startswith(b"<!doctype html") or prefix.startswith(b"<html")

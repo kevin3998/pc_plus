@@ -20,7 +20,7 @@ class BinaryDownloadSession:
     def __init__(self, cookie_manager: CookieManager):
         self.cookie_manager = cookie_manager
 
-    def download_binary(self, url: str, referer: str = "") -> bytes | None:
+    def download_binary(self, url: str, referer: str = "", timeout: int = 30) -> bytes | None:
         headers = {
             "User-Agent": DEFAULT_USER_AGENT,
             "Accept": "*/*",
@@ -33,7 +33,7 @@ class BinaryDownloadSession:
                 url,
                 headers=headers,
                 cookies=self.cookie_manager.cookies,
-                timeout=30,
+                timeout=timeout,
             )
             if response.status_code == 200 and response.content:
                 return response.content
