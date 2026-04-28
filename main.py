@@ -16,7 +16,7 @@ main.py  —  学术文献爬虫主入口
     --max 100
 
   # 第三步：爬取检索结果（使用 search 输出的 data/runs/{run_id}/urls.txt）
-  python main.py crawl --file data/runs/{run_id}/urls.txt --no-pdf --no-figures
+  python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
 
   # 或爬取单篇
   python main.py crawl --url https://www.sciencedirect.com/science/article/pii/XXX
@@ -436,10 +436,11 @@ def _run_id_from_urls_file(path: str | None) -> str | None:
 def _content_options_from_args(args) -> dict:
     return {
         "html":     getattr(args, "html",     True),
-        "pdf":      getattr(args, "pdf",      True),
+        "pdf":      getattr(args, "pdf",      False),
         "figures":  getattr(args, "figures",  True),
         "tables":   getattr(args, "tables",   True),
         "fulltext": getattr(args, "fulltext", True),
+        "supplementary": getattr(args, "supplementary", False),
         "asset_browser_fallback": getattr(args, "asset_browser_fallback", True),
         "max_figure_candidates_per_figure": getattr(args, "max_figure_candidates_per_figure", 4),
         "min_image_bytes": getattr(args, "min_image_bytes", 1000),
@@ -505,12 +506,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_content_flags(p):
     """向 search/crawl 子命令添加内容选择标志。"""
-    g = p.add_argument_group("内容选择（默认全选）")
+    g = p.add_argument_group("内容选择（默认保存 HTML、正文、图片、表格；PDF/补充材料默认关闭）")
     g.add_argument("--no-html",     dest="html",     action="store_false")
+    g.add_argument("--pdf",         dest="pdf",      action="store_true",
+                   help="下载 PDF（默认关闭）")
     g.add_argument("--no-pdf",      dest="pdf",      action="store_false")
     g.add_argument("--no-figures",  dest="figures",  action="store_false")
     g.add_argument("--no-tables",   dest="tables",   action="store_false")
     g.add_argument("--no-fulltext", dest="fulltext", action="store_false")
+    g.add_argument("--supplementary", dest="supplementary", action="store_true",
+                   help="下载补充材料（默认关闭；接口保留，便于后续扩展）")
+    g.add_argument("--no-supplementary", dest="supplementary", action="store_false")
     g.add_argument("--asset-browser-fallback", dest="asset_browser_fallback", action="store_true",
                    help="允许使用浏览器登录上下文兜底下载 PDF/图片")
     g.add_argument("--no-asset-browser-fallback", dest="asset_browser_fallback", action="store_false",
@@ -518,7 +524,15 @@ def _add_content_flags(p):
     g.add_argument("--max-figure-candidates-per-figure", type=int, default=4)
     g.add_argument("--min-image-bytes", type=int, default=1000)
     g.add_argument("--asset-timeout", type=int, default=30)
-    p.set_defaults(html=True, pdf=True, figures=True, tables=True, fulltext=True, asset_browser_fallback=True)
+    p.set_defaults(
+        html=True,
+        pdf=False,
+        figures=True,
+        tables=True,
+        fulltext=True,
+        supplementary=False,
+        asset_browser_fallback=True,
+    )
 
 
 # ─────────────────────────────────────────────
@@ -545,7 +559,7 @@ if __name__ == "__main__":
         print("  python main.py search --site sciencedirect "
               '--query "transparent conductive oxide" '
               "--year-from 2024 --year-to 2025 --max 100")
-        print("  python main.py crawl --file data/runs/{run_id}/urls.txt --no-pdf --no-figures")
+        print("  python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures")
         sys.exit(0)
 
     CMD_MAP[args.command](args)

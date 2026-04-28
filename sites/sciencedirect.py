@@ -36,10 +36,11 @@ class ScienceDirectAdapter(SiteAdapter):
     ]
 
     def search(self, engine, query: str, year_from: int = 2024, year_to: int = 2025, max_results: int = 200):
+        page_size = 25
         url = f"{self.search_base}?{urlencode({
             'qs': query,
             'date': f'{year_from}-{year_to}',
-            'show': 25,
+            'show': page_size,
             'sortBy': 'relevance',
         })}"
         html = engine.goto(url)
@@ -68,10 +69,30 @@ class ScienceDirectAdapter(SiteAdapter):
             if len(results) >= max_results or not page_results:
                 break
             if not engine.click_next(self.next_selectors):
-                break
+                next_url = self._search_url(query, year_from, year_to, page_size, page * page_size)
+                log.info("  [SD/browser] 下一页按钮不可用，改用 offset 翻页: %s", page * page_size)
+                html = engine.goto(next_url)
             page += 1
 
         return results[:max_results]
+
+    def _search_url(
+        self,
+        query: str,
+        year_from: int,
+        year_to: int,
+        page_size: int = 25,
+        offset: int = 0,
+    ) -> str:
+        params = {
+            "qs": query,
+            "date": f"{year_from}-{year_to}",
+            "show": page_size,
+            "sortBy": "relevance",
+        }
+        if offset:
+            params["offset"] = offset
+        return f"{self.search_base}?{urlencode(params)}"
 
     def extract_results(self, html: str) -> list[SearchResult]:
         soup = BeautifulSoup(html, "lxml")
@@ -117,6 +138,8 @@ class ScienceDirectAdapter(SiteAdapter):
         candidates: list[AssetCandidate] = []
 
         for url, source, label, caption in self._figure_download_links(page_url, soup):
+            if not self._is_article_figure_url(url, page_url):
+                continue
             priority = 0 if source == "sciencedirect_highres_link" else 10
             candidates.append(AssetCandidate(
                 type="figure",
@@ -127,14 +150,19 @@ class ScienceDirectAdapter(SiteAdapter):
                 priority=priority,
             ))
 
-        candidates.extend(self._preloaded_image_candidates(page_url, soup))
+        candidates.extend(
+            candidate for candidate in self._preloaded_image_candidates(page_url, soup)
+            if self._is_article_figure_url(candidate.url, page_url)
+        )
 
         fallback_candidates = []
         for candidate in super().figure_candidates(page_url, soup, max_per_figure=max_per_figure):
+            if not self._is_article_figure_url(candidate.url, page_url):
+                continue
             normalized_candidate = self._with_sciencedirect_figure_key(candidate)
             fallback_candidates.append(normalized_candidate)
             upgraded = self._upgrade_image_url(candidate.url)
-            if upgraded != candidate.url:
+            if upgraded != candidate.url and self._is_article_figure_url(upgraded, page_url):
                 fallback_candidates.append(AssetCandidate(
                     type="figure",
                     url=upgraded,
@@ -153,6 +181,24 @@ class ScienceDirectAdapter(SiteAdapter):
             seen.add(candidate.url)
             result.append(candidate)
         return result
+
+    @staticmethod
+    def _article_pii(page_url: str) -> str:
+        match = re.search(r"/pii/([^/?#]+)", page_url)
+        return match.group(1) if match else ""
+
+    @staticmethod
+    def _is_article_figure_url(url: str, page_url: str) -> bool:
+        url_lower = url.lower()
+        if any(token in url_lower for token in ("cover", "cov150", "cov200", "logo", "non-solus", "dwoodhead")):
+            return False
+        image_key = ScienceDirectAdapter._image_key(url)
+        if not image_key:
+            return False
+        pii = ScienceDirectAdapter._article_pii(page_url).lower()
+        if pii and pii not in url_lower:
+            return False
+        return True
 
     @staticmethod
     def _with_sciencedirect_figure_key(candidate: AssetCandidate) -> AssetCandidate:

@@ -1,3 +1,6 @@
-2026/04/26-16:25:06.122 22134e7 Reusing MANIFEST /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Session Storage/MANIFEST-000001
-2026/04/26-16:25:06.122 22134e7 Recovering log #3
-2026/04/26-16:25:06.122 22134e7 Reusing old log /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Session Storage/000003.log 
+2026/04/28-12:08:12.304 23dde2e Reusing MANIFEST /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Session Storage/MANIFEST-000001
+2026/04/28-12:08:12.304 23dde2e Recovering log #9
+2026/04/28-12:08:12.305 23dde2e Reusing old log /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Session Storage/000009.log 
+2026/04/28-12:32:22.662 23dde2e Level-0 table #13: started
+2026/04/28-12:32:22.666 23dde2e Level-0 table #13: 13006 bytes OK
+2026/04/28-12:32:22.668 23dde2e Delete type=0 #9

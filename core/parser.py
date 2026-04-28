@@ -28,9 +28,28 @@ from core.storage import StorageManager
 from config.settings import (
     DOWNLOAD_FIGURES, DOWNLOAD_TABLES,
     DOWNLOAD_FULLTEXT, DOWNLOAD_HTML, DOWNLOAD_PDF,
+    DOWNLOAD_SUPPLEMENTARY,
 )
 
 log = logging.getLogger("parser")
+
+SCIENCEDIRECT_FULLTEXT_MIN_CHARS = 3000
+SCIENCEDIRECT_INCOMPLETE_HEADINGS = {
+    "highlights",
+    "abstract",
+    "graphical abstract",
+    "keywords",
+    "cited by",
+    "recommended articles",
+    "references",
+}
+NO_ACCESS_SIGNALS = (
+    "access through your organization",
+    "check access to the full text",
+    "sign in to access",
+    "get access",
+    "purchase pdf",
+)
 
 
 class ArticleParser:
@@ -112,8 +131,13 @@ class ArticleParser:
             self.storage.save_abstract(adir, abstract)
 
         # ── 正文 ────────────────────────────────
+        md = ""
         if opts["fulltext"]:
             md = self._extract_fulltext(soup)
+            valid, reason = self._validate_fulltext(soup, md, url)
+            if not valid:
+                log.warning("  ✗ 正文不完整，跳过正文/资产保存: %s", reason)
+                return False
             if abstract:
                 md = self._prepend_abstract(md, abstract)
             md = self._prepend_article_header(md, meta)
@@ -360,6 +384,23 @@ class ArticleParser:
 
         return self._html_to_md(body)
 
+    def _validate_fulltext(self, soup: BeautifulSoup, markdown: str, url: str) -> tuple[bool, str]:
+        if not _is_sciencedirect_url(url):
+            return True, ""
+
+        page_text = soup.get_text(" ", strip=True).lower()
+        has_no_access = any(signal in page_text for signal in NO_ACCESS_SIGNALS)
+        if has_no_access and not _has_sciencedirect_body_signal(soup):
+            return False, "fulltext_not_available_or_no_access"
+
+        if _has_sciencedirect_body_signal(soup):
+            return True, ""
+
+        md_text = re.sub(r"\s+", " ", markdown or "").strip()
+        if len(md_text) < SCIENCEDIRECT_FULLTEXT_MIN_CHARS:
+            return False, "fulltext_incomplete_too_short"
+        return False, "fulltext_incomplete_no_body_headings"
+
     def _html_to_md(self, body: Tag) -> str:
         lines = []
         for el in body.find_all(
@@ -594,6 +635,44 @@ def _node_text_without_heading(el: Tag) -> str:
     return clone.get_text(separator=" ", strip=True)
 
 
+def _is_sciencedirect_url(url: str) -> bool:
+    return "sciencedirect.com" in urlparse(url).netloc.lower()
+
+
+def _has_sciencedirect_body_signal(soup: BeautifulSoup) -> bool:
+    if soup.select_one(
+        "div.Body, div#body, div[class*='article-body'], "
+        "div[class*='ArticleBody'], section[class*='body']"
+    ):
+        return True
+
+    headings = _content_headings(soup)
+    if any(re.search(r"(^|\b)(\d+\.?\s*)?introduction\b", heading, re.I) for heading in headings):
+        return True
+    if any(re.search(r"\b(experimental|methods?|results?|discussion|conclusion)\b", heading, re.I) for heading in headings):
+        return True
+    if any(re.search(r"\bmaterials?\s+and\s+methods?\b", heading, re.I) for heading in headings):
+        return True
+    return False
+
+
+def _content_headings(soup: BeautifulSoup) -> list[str]:
+    headings = []
+    for el in soup.select("article h2, article h3, article h4"):
+        text = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
+        if not text:
+            continue
+        lower_text = text.lower()
+        if lower_text in SCIENCEDIRECT_INCOMPLETE_HEADINGS:
+            continue
+        if lower_text.startswith(("cited by", "recommended articles", "references")):
+            continue
+        if any(signal in lower_text for signal in NO_ACCESS_SIGNALS):
+            continue
+        headings.append(text)
+    return headings
+
+
 def _extract_preloaded_state(soup: BeautifulSoup) -> dict:
     marker = "window.__PRELOADED_STATE__"
     for script in soup.find_all("script"):
@@ -665,6 +744,7 @@ def _content_options(options: dict | None) -> dict:
         "figures": DOWNLOAD_FIGURES,
         "tables": DOWNLOAD_TABLES,
         "fulltext": DOWNLOAD_FULLTEXT,
+        "supplementary": DOWNLOAD_SUPPLEMENTARY,
         "asset_browser_fallback": True,
         "max_figure_candidates_per_figure": 4,
         "min_image_bytes": 1000,

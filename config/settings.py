@@ -20,10 +20,11 @@ STATE_FILE  = ROOT_DIR / "crawl_state.json"   # 断点续爬状态
 #  下载内容选项（可在命令行覆盖）
 # ═══════════════════════════════════════════════════
 DOWNLOAD_HTML     = True
-DOWNLOAD_PDF      = True
+DOWNLOAD_PDF      = False
 DOWNLOAD_FIGURES  = True
 DOWNLOAD_TABLES   = True
 DOWNLOAD_FULLTEXT = True
+DOWNLOAD_SUPPLEMENTARY = False
 
 DEFAULT_USER_AGENT = os.getenv(
     "SCHOLAR_USER_AGENT",

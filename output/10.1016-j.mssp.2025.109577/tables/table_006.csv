@@ -1,6 +1,0 @@
-"Perovskite Structure","Substrate","Method","Target","Laser type","Substrate parameter","","","","","Chamber pressure","Avgs. film thickness","Ref"
-"Thickness (μm)","Purity","Transmittance","Melting Temperature","Resistivity"
-"SrVO3","fluorphlogopite mica (fx35 (fx36)fx37","PLD","STO – buffer layer SVO","KrF excimer laser Fluence","200","","","1200","","","40","[ 91 ] [ 120 ]"
-"CaVO3","fluorphlogopite mica (fx35 (fx36)fx37","PLD","CaVO3","KrF excimer laser Fluence","200","","","1200","","","40","[ 32 ] [ 120 ]"
-"La0.7Sr0.3MnO3 (LSMO)","fluorphlogopite mica (fx35 (fx36)fx37","PLD","Polycrystalline LSMO","KrF excimer laser Fluence","200","","","","","10","N/A","[ 120 ]"
-"BaSnO3","fluorocrystal mica (fx62)","PLD","Ba0.96La0.04SnO3 (BLSO)","KrF excimer laser Fluence","10","","","1100","","N/A","160","[ 121 ] [ 122 ]"

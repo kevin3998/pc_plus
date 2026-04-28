@@ -9,6 +9,7 @@ import base64
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from config.settings import ROOT_DIR
 from core.cookie_manager import CookieManager
@@ -24,6 +25,9 @@ CHALLENGE_SIGNALS = [
     "enable javascript and cookies",
     "verify you are human",
 ]
+
+ARTICLE_WAIT_SECONDS = 30
+ARTICLE_WAIT_POLL_SECONDS = 2
 
 
 class BrowserEngine:
@@ -104,7 +108,7 @@ class BrowserEngine:
 
     def open_article(self, url: str, timeout: int = 60000) -> str:
         html = self.goto(url, timeout=timeout)
-        self.scroll_to_bottom()
+        self._wait_for_article_content(url)
         return self.html() or html
 
     def html(self) -> str:
@@ -218,6 +222,93 @@ class BrowserEngine:
             """
         )
         self._wait_for_stable(short=True)
+
+    def _wait_for_article_content(self, url: str):
+        if not self._page or "sciencedirect.com" not in urlparse(url).netloc:
+            self.scroll_to_bottom()
+            return
+
+        deadline = time.time() + ARTICLE_WAIT_SECONDS
+        last_status = {}
+        while time.time() < deadline:
+            self._scroll_article_page()
+            last_status = self._article_content_status()
+            if last_status.get("has_body") or last_status.get("no_access"):
+                break
+            time.sleep(ARTICLE_WAIT_POLL_SECONDS)
+
+        if last_status.get("has_body"):
+            log.info("ScienceDirect 正文已加载: chars=%s headings=%s", last_status.get("chars"), last_status.get("headings"))
+        elif last_status.get("no_access"):
+            log.info("ScienceDirect 页面显示可能无全文权限")
+        else:
+            log.warning(
+                "ScienceDirect 正文等待超时，继续交给解析层判定: chars=%s headings=%s",
+                last_status.get("chars"),
+                last_status.get("headings"),
+            )
+        self._sync_cookies_out()
+
+    def _scroll_article_page(self):
+        self._page.evaluate(
+            """
+            async () => {
+              const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+              const steps = [0.25, 0.55, 0.85, 1.0];
+              for (const step of steps) {
+                window.scrollTo(0, Math.max(0, document.body.scrollHeight * step - window.innerHeight));
+                await delay(500);
+              }
+              const article = document.querySelector("article") || document.body;
+              if (article) article.scrollIntoView({block: "start"});
+              await delay(300);
+            }
+            """
+        )
+        self._wait_for_stable(short=True)
+
+    def _article_content_status(self) -> dict:
+        try:
+            return self._page.evaluate(
+                """
+                () => {
+                  const text = (document.body && document.body.innerText || "").replace(/\\s+/g, " ");
+                  const headings = Array.from(document.querySelectorAll("article h2, article h3, article h4"))
+                    .map(el => (el.innerText || "").replace(/\\s+/g, " ").trim())
+                    .filter(Boolean);
+                  const ignored = new Set([
+                    "highlights", "abstract", "graphical abstract", "keywords",
+                    "cited by", "recommended articles", "references"
+                  ]);
+                  const contentHeadings = headings.filter(h => {
+                    const lower = h.toLowerCase();
+                    return !ignored.has(lower) &&
+                      !lower.startsWith("cited by") &&
+                      !lower.startsWith("recommended articles") &&
+                      !lower.startsWith("references") &&
+                      !/access through your organization|check access to the full text|sign in to access|get access|purchase pdf/i.test(lower);
+                  });
+                  const hasBodySelector = !!document.querySelector(
+                    "div.Body, div#body, div[class*='article-body'], div[class*='ArticleBody'], section[class*='body']"
+                  );
+                  const hasIntro = headings.some(h => /(^|\\b)(\\d+\\.?\\s*)?introduction\\b/i.test(h));
+                  const hasSection = contentHeadings.some(h =>
+                    /\\b(experimental|methods?|results?|discussion|conclusion)\\b/i.test(h) ||
+                    /\\bmaterials?\\s+and\\s+methods?\\b/i.test(h)
+                  );
+                  const noAccess = /access through your organization|check access to the full text|sign in to access|get access|purchase pdf/i.test(text);
+                  return {
+                    chars: text.length,
+                    headings: contentHeadings.length,
+                    has_body: hasBodySelector || hasIntro || hasSection || text.length > 12000,
+                    no_access: noAccess && !hasBodySelector && !hasIntro && !hasSection,
+                  };
+                }
+                """
+            )
+        except Exception as exc:
+            log.debug("正文加载状态检测失败: %s", exc)
+            return {}
 
     def click_next(self, selectors: list[str]) -> bool:
         for selector in selectors:
