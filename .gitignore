@@ -1,1 +1,13 @@
 data/
+
+# Runtime/browser state
+browser_profile/
+browser_profiles/
+cookies.json
+logs/
+crawl_state.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -1,13 +1,10 @@
-from bs4 import BeautifulSoup
-
-
 def test_registry_exposes_supported_adapters_and_detects_urls():
     from sites.registry import detect_adapter, get_adapter, supported_sites
 
     assert supported_sites() == ["sciencedirect", "springer", "nature"]
     assert get_adapter("sciencedirect").name == "ScienceDirect (Elsevier)"
     assert get_adapter("springer").name == "SpringerLink"
-    assert get_adapter("nature").supports_search is False
+    assert get_adapter("nature").supports_search is True
 
     assert detect_adapter("https://www.sciencedirect.com/science/article/pii/S123").key == "sciencedirect"
     assert detect_adapter("https://link.springer.com/article/10.1007/s10854-025-12345").key == "springer"
@@ -24,7 +21,7 @@ def test_registry_rejects_unknown_site_and_url():
         detect_adapter("https://example.test/article")
 
 
-def test_sciencedirect_adapter_preserves_result_extraction_and_pdf_rule():
+def test_sciencedirect_adapter_preserves_result_extraction_and_filters_pdf_links():
     from sites.registry import get_adapter
 
     adapter = get_adapter("sciencedirect")
@@ -47,13 +44,9 @@ def test_sciencedirect_adapter_preserves_result_extraction_and_pdf_rule():
     assert adapter.normalize_url("https://www.sciencedirect.com/science/article/pii/S123/pdf") == (
         "https://www.sciencedirect.com/science/article/pii/S123"
     )
-    assert adapter.find_pdf_url(
-        "https://www.sciencedirect.com/science/article/pii/S123",
-        BeautifulSoup("<html></html>", "lxml"),
-    ) == "https://www.sciencedirect.com/science/article/pii/S123/pdf"
 
 
-def test_springer_adapter_extracts_results_normalizes_urls_and_infers_pdf():
+def test_springer_adapter_extracts_results_and_normalizes_urls():
     from sites.registry import get_adapter
 
     adapter = get_adapter("springer")
@@ -85,57 +78,12 @@ def test_springer_adapter_extracts_results_normalizes_urls_and_infers_pdf():
     assert adapter.normalize_url("https://link.springer.com/article/10.1007/x?foo=bar#citeas") == (
         "https://link.springer.com/article/10.1007/x"
     )
-    assert adapter.find_pdf_url(
-        "https://link.springer.com/article/10.1007/s10854-025-12345",
-        BeautifulSoup("<html></html>", "lxml"),
-    ) == "https://link.springer.com/content/pdf/10.1007/s10854-025-12345.pdf"
 
 
-def test_nature_adapter_is_registered_but_search_not_implemented():
-    import pytest
+def test_nature_adapter_normalizes_article_urls():
     from sites.registry import get_adapter
 
     adapter = get_adapter("nature")
     assert adapter.normalize_url("https://www.nature.com/articles/s41586-025-00001?proof=t") == (
         "https://www.nature.com/articles/s41586-025-00001"
     )
-    with pytest.raises(NotImplementedError, match="nature adapter is registered but search is not implemented yet"):
-        adapter.search(None, "transparent conductive oxide", 2024, 2025, 10)
-
-
-def test_article_parser_uses_adapter_pdf_rule(tmp_path):
-    from core.parser import ArticleParser
-    from core.storage import StorageManager
-    from sites.registry import get_adapter
-
-    class PdfSession:
-        def download_binary(self, url, referer=""):
-            assert url == "https://link.springer.com/content/pdf/10.1007/s10854-025-12345.pdf"
-            return b"%PDF-1.7\ncontent"
-
-    storage = StorageManager(tmp_path, site="springer")
-    parser = ArticleParser(PdfSession(), storage, adapter=get_adapter("springer"))
-    html = """
-    <html><head>
-      <meta name="citation_title" content="Springer Article">
-      <meta name="citation_doi" content="10.1007/s10854-025-12345">
-    </head><body><article><p>Body text.</p></article></body></html>
-    """
-
-    assert parser.parse_html("https://link.springer.com/article/10.1007/s10854-025-12345", html, options={
-        "html": False,
-        "pdf": True,
-        "figures": False,
-        "tables": False,
-        "fulltext": False,
-    })
-    assert (
-        tmp_path
-        / "articles"
-        / "springer"
-        / "_library"
-        / "10.1007-s10854-025-12345"
-        / "assets"
-        / "pdf"
-        / "article.pdf"
-    ).exists()

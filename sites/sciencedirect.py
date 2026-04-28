@@ -131,9 +131,6 @@ class ScienceDirectAdapter(SiteAdapter):
                 break
         return f"https://www.sciencedirect.com{path}"
 
-    def find_pdf_url(self, page_url: str, soup: BeautifulSoup) -> str:
-        return page_url.rstrip("/") + "/pdf"
-
     def figure_candidates(self, page_url: str, soup: BeautifulSoup, max_per_figure: int = 4) -> list[AssetCandidate]:
         candidates: list[AssetCandidate] = []
 

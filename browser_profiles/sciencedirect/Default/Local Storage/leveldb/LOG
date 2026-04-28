@@ -1,9 +1,0 @@
-2026/04/28-12:08:12.199 23dde2e Reusing MANIFEST /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Local Storage/leveldb/MANIFEST-000001
-2026/04/28-12:08:12.201 23dde2e Recovering log #25
-2026/04/28-12:08:12.202 23dde2e Reusing old log /Users/chenlintao/pc_plus_codex/browser_profiles/sciencedirect/Default/Local Storage/leveldb/000025.log 
-2026/04/28-12:28:22.661 23dde31 Level-0 table #29: started
-2026/04/28-12:28:22.663 23dde31 Level-0 table #29: 10211 bytes OK
-2026/04/28-12:28:22.665 23dde31 Delete type=0 #25
-2026/04/28-13:19:56.646 23dde31 Level-0 table #31: started
-2026/04/28-13:19:56.650 23dde31 Level-0 table #31: 9255 bytes OK
-2026/04/28-13:19:56.653 23dde31 Delete type=0 #28

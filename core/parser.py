@@ -11,7 +11,6 @@ core/parser.py
 
 图片：支持 <img>, <picture>, data-src 懒加载, srcset
 表格：HTML → CSV（含跨行列合并展开）
-PDF：检测 /pdf, /epdf, download 链接并尝试下载
 ─────────────────────────────────────────────────────────────
 """
 
@@ -27,8 +26,7 @@ from core.assets import AssetCandidate, AssetDownloader, extension_from_url_or_t
 from core.storage import StorageManager
 from config.settings import (
     DOWNLOAD_FIGURES, DOWNLOAD_TABLES,
-    DOWNLOAD_FULLTEXT, DOWNLOAD_HTML, DOWNLOAD_PDF,
-    DOWNLOAD_SUPPLEMENTARY,
+    DOWNLOAD_FULLTEXT, DOWNLOAD_HTML,
 )
 
 log = logging.getLogger("parser")
@@ -114,7 +112,7 @@ class ArticleParser:
         log.info(f"  标题: {meta.get('title','?')[:70]}")
 
         # 断点续爬检查
-        if self.storage.article_exists(doi):
+        if self.storage.article_exists(doi) or self.storage.article_exists(url):
             log.info("  ↩ 已存在，跳过（断点续爬）")
             return True
 
@@ -150,10 +148,6 @@ class ArticleParser:
         # ── 表格 ────────────────────────────────
         if opts["tables"]:
             self._extract_tables(soup, adir)
-
-        # ── PDF ─────────────────────────────────
-        if opts["pdf"]:
-            self._try_download_pdf(soup, adir, url, opts)
 
         log.info(f"  ✓ 完成: {adir.name}")
         return True
@@ -247,9 +241,6 @@ class ArticleParser:
         # ── DOI 从 URL 提取 ─────────────────────
         if not meta.get("doi"):
             meta["doi"] = _extract_doi(url)
-
-        # ── PDF URL ─────────────────────────────
-        meta["pdf_url"] = self._find_pdf_url(soup, url)
 
         return meta
 
@@ -551,50 +542,6 @@ class ArticleParser:
                 rows_out.append(row)
         return rows_out
 
-    # ─────────────────────────────────────────────
-    #  PDF 下载
-    # ─────────────────────────────────────────────
-    def _find_pdf_url(self, soup: BeautifulSoup, page_url: str) -> str:
-        candidates = self._pdf_candidates(soup, page_url)
-        return candidates[0].url if candidates else ""
-
-    def _pdf_candidates(self, soup: BeautifulSoup, page_url: str) -> list[AssetCandidate]:
-        if self.adapter and hasattr(self.adapter, "pdf_candidates"):
-            return self.adapter.pdf_candidates(page_url, soup)
-        from sites.base import SiteAdapter
-
-        return SiteAdapter().pdf_candidates(page_url, soup)
-
-    def _try_download_pdf(self, soup: BeautifulSoup, adir, page_url: str, options: dict | None = None):
-        opts = _content_options(options)
-        candidates = self._pdf_candidates(soup, page_url)
-        if not candidates:
-            log.info("    PDF: 未找到下载链接")
-            return
-
-        downloader = AssetDownloader(
-            self.session,
-            browser=self.browser,
-            browser_fallback=opts["asset_browser_fallback"],
-            timeout=opts["asset_timeout"],
-            min_image_bytes=opts["min_image_bytes"],
-        )
-        for candidate in candidates:
-            log.info(f"    PDF: 尝试下载 {candidate.url[:70]}")
-            result = downloader.download_one(candidate, referer=page_url)
-            if result.status == "done" and result.data:
-                self.storage.save_pdf(adir, result.data, source_url=result.url, method=result.method)
-                return
-            self.storage.record_asset_failure(
-                adir,
-                asset_type="pdf",
-                source_url=candidate.url,
-                error=result.error or "download_failed",
-                content_type=result.content_type,
-            )
-        log.info("    PDF: 无权限或下载失败（需机构订阅）")
-
-
 # ─────────────────────────────────────────────
 #  工具函数
 # ─────────────────────────────────────────────
@@ -740,11 +687,9 @@ def _child_text(node: dict, child_name: str) -> str:
 def _content_options(options: dict | None) -> dict:
     defaults = {
         "html": DOWNLOAD_HTML,
-        "pdf": DOWNLOAD_PDF,
         "figures": DOWNLOAD_FIGURES,
         "tables": DOWNLOAD_TABLES,
         "fulltext": DOWNLOAD_FULLTEXT,
-        "supplementary": DOWNLOAD_SUPPLEMENTARY,
         "asset_browser_fallback": True,
         "max_figure_candidates_per_figure": 4,
         "min_image_bytes": 1000,

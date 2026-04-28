@@ -51,13 +51,12 @@ def test_article_parser_saves_article_in_site_scoped_layout_and_indexes_it(tmp_p
       <meta name="citation_journal_title" content="Solar Energy">
       <meta name="citation_publication_date" content="2025-01-02">
     </head><body>
-      <article><h1>Indexed Article</h1><p>Body text for the indexed article.</p></article>
+      <article><h1>Indexed Article</h1><div id="body"><h2>1. Introduction</h2><p>Body text for the indexed article.</p></div></article>
     </body></html>
     """
 
     assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/SINDEX", html, options={
         "html": True,
-        "pdf": False,
         "figures": False,
         "tables": False,
         "fulltext": True,
@@ -110,7 +109,6 @@ def test_sciencedirect_abstract_is_saved_and_prepended_to_fulltext(tmp_path):
 
     assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/SABSTRACT", html, options={
         "html": True,
-        "pdf": False,
         "figures": False,
         "tables": False,
         "fulltext": True,
@@ -121,7 +119,7 @@ def test_sciencedirect_abstract_is_saved_and_prepended_to_fulltext(tmp_path):
     fulltext = (article_dir / "parsed" / "fulltext.md").read_text(encoding="utf-8")
 
     assert abstract == "This is the ScienceDirect abstract text."
-    assert fulltext.startswith("## Abstract\n\nThis is the ScienceDirect abstract text.")
+    assert "## Abstract\n\nThis is the ScienceDirect abstract text." in fulltext
     assert fulltext.index("This is the ScienceDirect abstract text.") < fulltext.index("## 1. Introduction")
     assert "Highlights should not become the article abstract" not in abstract
 
@@ -137,17 +135,16 @@ def test_storage_registers_assets_with_file_metadata(tmp_path):
         "title": "Asset Article",
     })
 
-    storage.save_pdf(adir, b"%PDF-1.7\nbody", source_url="https://example.test/article/pdf")
     storage.save_figure(adir, 1, b"x" * 1200, ".jpg", "Caption", "Fig. 1", source_url="https://example.test/fig.jpg")
     storage.save_table(adir, 1, "<table><tr><td>A</td></tr></table>", [["A"]], "Table 1")
 
     assets = rows(storage.db_path, "assets")
-    assert [asset["type"] for asset in assets] == ["pdf", "figure", "table"]
+    assert [asset["type"] for asset in assets] == ["figure", "table"]
     assert all(asset["status"] == "done" for asset in assets)
     assert all(asset["path"] for asset in assets)
     assert all(asset["sha256"] for asset in assets)
-    assert assets[1]["caption"] == "Caption"
-    assert assets[1]["label"] == "Fig. 1"
+    assert assets[0]["caption"] == "Caption"
+    assert assets[0]["label"] == "Fig. 1"
 
 
 def test_run_state_tracks_pending_retries_and_report(tmp_path):

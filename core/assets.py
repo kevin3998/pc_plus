@@ -106,11 +106,6 @@ class AssetDownloader:
         result.size_bytes = len(data)
         if result.status != "done":
             return result
-        if candidate.type == "pdf":
-            if not _is_pdf(data, result.content_type):
-                result.status = "failed"
-                result.error = "not_pdf"
-            return result
         if _looks_like_html(data, result.content_type):
             result.status = "failed"
             result.error = "html_response"
@@ -124,10 +119,6 @@ class AssetDownloader:
                 result.content_type = content_type_from_data_or_url(data, candidate.url)
             return result
         return result
-
-
-def _is_pdf(data: bytes, content_type: str = "") -> bool:
-    return data.startswith(b"%PDF") or ("application/pdf" in (content_type or "").lower() and not _looks_like_html(data, content_type))
 
 
 def _looks_like_html(data: bytes, content_type: str = "") -> bool:
@@ -164,13 +155,12 @@ def extension_from_url_or_type(url: str, content_type: str = "") -> str:
         "image/gif": ".gif",
         "image/webp": ".webp",
         "image/tiff": ".tif",
-        "application/pdf": ".pdf",
     }
     if ctype in by_type:
         return by_type[ctype]
     path = urlparse(url).path.lower()
     if "." in path:
         ext = "." + path.rsplit(".", 1)[-1]
-        if ext in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".tif", ".tiff", ".pdf"}:
+        if ext in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".tif", ".tiff"}:
             return ".jpg" if ext == ".jpeg" else ext
     return ".jpg"

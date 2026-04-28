@@ -91,19 +91,3 @@ class SpringerAdapter(SiteAdapter):
         if not (path.startswith("/article/") or path.startswith("/chapter/")):
             return ""
         return f"https://link.springer.com{path}"
-
-    def find_pdf_url(self, page_url: str, soup: BeautifulSoup) -> str:
-        generic = self.generic_pdf_url(page_url, soup)
-        if generic:
-            return generic
-        parsed = urlparse(page_url)
-        if "link.springer.com" not in parsed.netloc:
-            return ""
-        path = parsed.path.rstrip("/")
-        if path.startswith("/article/"):
-            doi = path.replace("/article/", "", 1)
-            return f"https://link.springer.com/content/pdf/{doi}.pdf"
-        if path.startswith("/chapter/"):
-            doi = path.replace("/chapter/", "", 1)
-            return f"https://link.springer.com/content/pdf/{doi}.pdf"
-        return ""

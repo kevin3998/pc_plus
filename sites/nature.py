@@ -115,9 +115,6 @@ class NatureAdapter(SiteAdapter):
             ))
         return results
 
-    def pdf_candidates(self, page_url: str, soup: BeautifulSoup) -> list[AssetCandidate]:
-        return []
-
     def figure_candidates(self, page_url: str, soup: BeautifulSoup, max_per_figure: int = 4) -> list[AssetCandidate]:
         candidates: list[AssetCandidate] = []
         candidates.extend(self._structured_image_candidates(page_url, soup))

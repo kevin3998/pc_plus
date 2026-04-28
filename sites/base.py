@@ -49,19 +49,6 @@ class SiteAdapter:
     def extract_results(self, html: str) -> list[SearchResult]:
         raise NotImplementedError(f"{self.key} adapter result extraction is not implemented yet")
 
-    def find_pdf_url(self, page_url: str, soup: BeautifulSoup) -> str:
-        return ""
-
-    def pdf_candidates(self, page_url: str, soup: BeautifulSoup) -> list[AssetCandidate]:
-        candidates = []
-        generic = self.generic_pdf_url(page_url, soup)
-        if generic:
-            candidates.append(AssetCandidate(type="pdf", url=generic, source="generic_pdf", priority=10))
-        fallback = self.find_pdf_url(page_url, soup)
-        if fallback and fallback not in {candidate.url for candidate in candidates}:
-            candidates.append(AssetCandidate(type="pdf", url=fallback, source=f"{self.key}_pdf", priority=20))
-        return candidates
-
     def figure_candidates(self, page_url: str, soup: BeautifulSoup, max_per_figure: int = 4) -> list[AssetCandidate]:
         candidates: list[AssetCandidate] = []
         figures = soup.select("figure, div[class*='figure'], div[class*='fig-']")
@@ -86,25 +73,6 @@ class SiteAdapter:
                         priority=priority,
                     ))
         return _dedupe_candidates(candidates)
-
-    @staticmethod
-    def generic_pdf_url(page_url: str, soup: BeautifulSoup) -> str:
-        el = soup.find("meta", attrs={"name": "citation_pdf_url"})
-        if el:
-            return el.get("content", "")
-
-        for anchor in soup.select("a[href]"):
-            href = anchor.get("href", "")
-            text = anchor.get_text(strip=True).lower()
-            classes = " ".join(anchor.get("class", [])).lower()
-            if ".pdf" in href.lower() or "pdf" in classes or text in {
-                "pdf",
-                "download pdf",
-                "full pdf",
-                "view pdf",
-            }:
-                return urljoin(page_url, href)
-        return ""
 
     @staticmethod
     def _image_urls_from_element(page_url: str, element) -> list[str]:

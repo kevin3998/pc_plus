@@ -177,13 +177,12 @@ def test_article_parser_can_parse_supplied_html(tmp_path):
       <meta name="citation_title" content="Browser Article">
       <meta name="citation_doi" content="10.1016/j.example.2025.1">
     </head><body>
-      <article><h1>Browser Article</h1><p>Long enough browser supplied full text.</p></article>
+      <article><h1>Browser Article</h1><div id="body"><h2>1. Introduction</h2><p>Long enough browser supplied full text.</p></div></article>
     </body></html>
     """
 
     assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/S1", html, options={
         "html": True,
-        "pdf": False,
         "figures": False,
         "tables": False,
         "fulltext": True,
@@ -210,7 +209,6 @@ def test_article_parser_respects_disabled_content_options(tmp_path, monkeypatch)
     calls = []
     monkeypatch.setattr(parser, "_extract_figures", lambda *args: calls.append("figures"))
     monkeypatch.setattr(parser, "_extract_tables", lambda *args: calls.append("tables"))
-    monkeypatch.setattr(parser, "_try_download_pdf", lambda *args: calls.append("pdf"))
     html = """
     <html><head>
       <meta name="citation_title" content="Options Article">
@@ -220,7 +218,6 @@ def test_article_parser_respects_disabled_content_options(tmp_path, monkeypatch)
 
     assert parser.parse_html("https://example.test/article", html, options={
         "html": False,
-        "pdf": False,
         "figures": False,
         "tables": False,
         "fulltext": False,
@@ -266,7 +263,6 @@ def test_article_parser_extracts_sciencedirect_div_paragraphs(tmp_path):
 
     assert parser.parse_html("https://example.test/article", html, options={
         "html": False,
-        "pdf": False,
         "figures": False,
         "tables": False,
         "fulltext": True,
@@ -440,7 +436,6 @@ def test_crawl_file_from_run_reuses_existing_collection(tmp_path, monkeypatch):
         year_to=None,
         max=1,
         html=True,
-        pdf=False,
         figures=False,
         tables=False,
         fulltext=True,

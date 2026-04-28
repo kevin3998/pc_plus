@@ -21,8 +21,8 @@ def test_asset_downloader_uses_browser_fallback_after_request_failure():
         def download_binary(self, url, referer="", timeout=30):
             return {
                 "status": 200,
-                "content_type": "application/pdf",
-                "data": b"%PDF-1.7\nbrowser",
+                "content_type": "image/jpeg",
+                "data": b"\xff\xd8" + b"x" * 2500,
             }
 
     downloader = AssetDownloader(
@@ -32,16 +32,16 @@ def test_asset_downloader_uses_browser_fallback_after_request_failure():
     )
 
     result = downloader.download_one(
-        AssetCandidate(type="pdf", url="https://example.test/article.pdf"),
+        AssetCandidate(type="figure", url="https://example.test/figure.jpg"),
         referer="https://example.test/article",
     )
 
     assert result.status == "done"
     assert result.method == "browser"
-    assert result.data.startswith(b"%PDF")
+    assert result.data.startswith(b"\xff\xd8")
 
 
-def test_asset_downloader_uses_browser_fallback_after_invalid_pdf_html():
+def test_asset_downloader_uses_browser_fallback_after_invalid_image_html():
     from core.assets import AssetCandidate, AssetDownloader
 
     class RequestSession:
@@ -52,8 +52,8 @@ def test_asset_downloader_uses_browser_fallback_after_invalid_pdf_html():
         def download_binary(self, url, referer="", timeout=30):
             return {
                 "status": 200,
-                "content_type": "application/pdf",
-                "data": b"%PDF-1.7\nbrowser",
+                "content_type": "image/jpeg",
+                "data": b"\xff\xd8" + b"x" * 2500,
             }
 
     downloader = AssetDownloader(
@@ -63,13 +63,13 @@ def test_asset_downloader_uses_browser_fallback_after_invalid_pdf_html():
     )
 
     result = downloader.download_one(
-        AssetCandidate(type="pdf", url="https://www.sciencedirect.com/science/article/pii/S1/pdfft"),
+        AssetCandidate(type="figure", url="https://example.test/figure.jpg"),
         referer="https://www.sciencedirect.com/science/article/pii/S1",
     )
 
     assert result.status == "done"
     assert result.method == "browser"
-    assert result.data.startswith(b"%PDF")
+    assert result.data.startswith(b"\xff\xd8")
 
 
 def test_parser_content_options_preserve_numeric_asset_values():
@@ -99,76 +99,18 @@ def test_storage_records_failed_asset_without_file(tmp_path):
 
     storage.record_asset_failure(
         adir,
-        asset_type="pdf",
-        source_url="https://link.springer.com/content/pdf/10.1007/s10854-025-12345.pdf",
+        asset_type="figure",
+        source_url="https://example.test/figure.jpg",
         error="http_403",
         content_type="text/html",
     )
 
     rows = asset_rows(storage.db_path)
     assert len(rows) == 1
-    assert rows[0]["type"] == "pdf"
+    assert rows[0]["type"] == "figure"
     assert rows[0]["status"] == "failed"
     assert rows[0]["error"] == "http_403"
     assert rows[0]["path"] == ""
-
-
-def test_parser_records_failed_pdf_candidate_then_saves_valid_pdf(tmp_path):
-    from core.parser import ArticleParser
-    from core.storage import StorageManager
-    from sites.registry import get_adapter
-
-    class PdfSession:
-        def download_binary(self, url, referer="", timeout=30):
-            if url.endswith("bad.pdf"):
-                return b"<html>denied</html>"
-            return b"%PDF-1.7\nvalid"
-
-    class Adapter:
-        key = "springer"
-
-        def pdf_candidates(self, page_url, soup):
-            from core.assets import AssetCandidate
-
-            return [
-                AssetCandidate(type="pdf", url="https://example.test/bad.pdf", source="test", priority=10),
-                AssetCandidate(type="pdf", url="https://example.test/good.pdf", source="test", priority=1),
-            ]
-
-        def figure_candidates(self, page_url, soup, max_per_figure=4):
-            return []
-
-    storage = StorageManager(tmp_path, site="springer")
-    parser = ArticleParser(PdfSession(), storage, adapter=Adapter())
-    html = """
-    <html><head>
-      <meta name="citation_title" content="PDF Article">
-      <meta name="citation_doi" content="10.1007/s10854-025-12345">
-    </head><body><article><p>Body.</p></article></body></html>
-    """
-
-    assert parser.parse_html("https://link.springer.com/article/10.1007/s10854-025-12345", html, options={
-        "html": False,
-        "pdf": True,
-        "figures": False,
-        "tables": False,
-        "fulltext": False,
-    })
-
-    rows = asset_rows(storage.db_path)
-    assert [row["status"] for row in rows] == ["failed", "done"]
-    assert rows[0]["error"] == "not_pdf"
-    assert rows[1]["source_url"] == "https://example.test/good.pdf"
-    assert (
-        tmp_path
-        / "articles"
-        / "springer"
-        / "_library"
-        / "10.1007-s10854-025-12345"
-        / "assets"
-        / "pdf"
-        / "article.pdf"
-    ).exists()
 
 
 def test_parser_prefers_high_resolution_figure_candidate(tmp_path):
@@ -200,7 +142,6 @@ def test_parser_prefers_high_resolution_figure_candidate(tmp_path):
 
     assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/SFIG", html, options={
         "html": False,
-        "pdf": False,
         "figures": True,
         "tables": False,
         "fulltext": False,

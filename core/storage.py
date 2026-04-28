@@ -744,7 +744,7 @@ class StorageManager:
                     (selected_site, doi_or_url, key),
                 ).fetchone()
         d = self.base / row["article_dir"] if row and row["article_dir"] else self.library_root(selected_site) / key
-        for sub in ("raw", "parsed", "assets/pdf", "assets/figures", "assets/tables", "assets/supplementary"):
+        for sub in ("raw", "parsed", "assets/figures", "assets/tables"):
             (d / sub).mkdir(parents=True, exist_ok=True)
         return d
 
@@ -780,15 +780,6 @@ class StorageManager:
 
     def save_html(self, adir: Path, html: str):
         _write_text(adir / "raw" / "article.html", html)
-
-    def save_pdf(self, adir: Path, data: bytes, source_url: str = "", method: str = "") -> bool:
-        if not data:
-            return False
-        path = adir / "assets" / "pdf" / "article.pdf"
-        path.write_bytes(data)
-        self._record_asset(adir, "pdf", path, data, source_url=source_url, content_type="application/pdf", error=method)
-        log.info("    ✓ PDF 已保存 (%s KB)", len(data) // 1024)
-        return True
 
     def save_figure(
         self,
@@ -868,12 +859,6 @@ class StorageManager:
         if caption:
             _write_text(table_dir / f"{stem}_caption.txt", caption)
         log.info("    ✓ 表 %s 已保存  %s", idx, caption[:40])
-
-    def save_supplementary(self, adir: Path, idx: int, data: bytes, filename: str):
-        dest = adir / "assets" / "supplementary" / f"si_{idx:03d}_{filename}"
-        dest.write_bytes(data)
-        self._record_asset(adir, "supplementary", dest, data)
-        log.info("    ✓ 补充材料 %s: %s", idx, filename)
 
     def last_article_id(self, adir: Path | None = None) -> int | None:
         if adir is not None and str(adir) in self._dir_article_ids:

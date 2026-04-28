@@ -11,7 +11,7 @@ log = logging.getLogger("downloader")
 
 
 class BinaryDownloadSession:
-    """Download figures/PDFs with the current cookie snapshot.
+    """Download secondary binary assets with the current cookie snapshot.
 
     Page HTML is fetched by Patchright. This class is intentionally limited to
     secondary binary assets so the old HTTP crawling path stays out of the CLI.
