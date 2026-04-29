@@ -123,6 +123,59 @@ data/runs/{run_id}/urls.txt
 data/articles/sciencedirect/searches/{collection_slug}/
 ```
 
+#### ScienceDirect 分批续搜
+
+ScienceDirect 搜索默认使用 `offset` 翻页，并在翻页之间加入保守随机等待，避免连续快速翻页。每页按 25 条推进。
+
+如果同一检索条件先跑一批，例如前 500 条：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500
+```
+
+下一次可以直接从上次保存的 offset 继续，不需要重新扫前 500 条：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500 \
+  --resume-search
+```
+
+也可以手动指定起始 offset：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500 \
+  --start-offset 500
+```
+
+如需重新从第一页开始，并清除该检索条件的续搜位置：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500 \
+  --reset-search-cursor
+```
+
+建议 `--max` 使用 25 的倍数，例如 `500`、`1000`。如果不是 25 的倍数，程序会保守处理续搜 offset，避免漏掉当前页尚未返回的结果。
+
 ### 3. 爬取检索结果
 
 使用上一步生成的 `urls.txt`：
@@ -378,6 +431,20 @@ exported_collection/
 
 脚本只导出已有 `parsed/fulltext.md` 的成功文章；缺少全文、没有 `article_id` 或源目录缺失的记录会写入 `missing.csv`。多 collection 导出会按 `article_id` 去重，`manifest` 中的 `source_collections` 和 `duplicate_count` 会记录来源集合和重复次数。
 
+## 搜索续跑状态
+
+ScienceDirect 的 `--resume-search` 依赖 SQLite 中的 `search_cursors` 表。游标按以下条件生成稳定 key：
+
+- site
+- query
+- year_from / year_to
+- journal filters
+- sort
+
+游标记录 `next_offset`、`page_size`、`last_run_id` 和是否已到末页。`--resume-search` 会读取 `next_offset`；`--start-offset` 会覆盖本次起点；`--reset-search-cursor` 会删除同一检索条件的游标。
+
+该功能目前只针对 `sciencedirect` 启用，Nature 和 Springer 仍使用原有按钮翻页流程。
+
 ## 手动验证与中断
 
 如果遇到验证码、人机验证或需要重新登录，程序会在终端提示你到浏览器中完成验证，然后按 Enter 继续。
@@ -422,4 +489,5 @@ python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
 - 已存在成功文章默认会跳过重新下载，但仍会加入新的 search collection。
 - 失败文章归档在 `_failed/`，不阻止后续补爬。
 - PDF 和补充材料下载逻辑已移除，避免请求过多和权限问题。
+- ScienceDirect 支持 `--resume-search` 续搜，适合将大检索拆成多批获取。
 - 站点权限取决于账号、机构网络和当前 IP 环境。

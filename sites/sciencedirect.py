@@ -2,7 +2,9 @@
 
 import json
 import logging
+import random
 import re
+import time
 from urllib.parse import urlencode, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -11,6 +13,10 @@ from core.assets import AssetCandidate
 from sites.base import SearchResult, SiteAdapter, first_year
 
 log = logging.getLogger("sites.sciencedirect")
+
+SD_PAGE_DELAY_SECONDS = (8.0, 20.0)
+SD_PAGE_BATCH_SIZE = 8
+SD_PAGE_COOLDOWN_SECONDS = (120.0, 300.0)
 
 
 class ScienceDirectAdapter(SiteAdapter):
@@ -30,9 +36,14 @@ class ScienceDirectAdapter(SiteAdapter):
     )
     next_selectors = [
         "li.pagination-next button",
+        "li.pagination-next a",
+        "button[aria-label='Next']",
+        "a[aria-label='Next']",
         "button[aria-label='Next page']",
-        "a[aria-label='Go to next page']",
         "a[aria-label='Next page']",
+        "a[aria-label='Go to next page']",
+        "button[title='Next']",
+        "a[title='Next']",
     ]
 
     def search(
@@ -45,16 +56,16 @@ class ScienceDirectAdapter(SiteAdapter):
         filters=None,
     ):
         page_size = 25
-        url = f"{self.search_base}?{urlencode({
-            'qs': query,
-            'date': f'{year_from}-{year_to}',
-            'show': page_size,
-            'sortBy': 'relevance',
-        })}"
+        start_offset = max(0, int(getattr(filters, "start_offset", 0) or 0))
+        self.last_search_next_offset = start_offset
+        self.last_search_finished = False
+        self.last_search_page_size = page_size
+        url = self._search_url(query, year_from, year_to, page_size, start_offset)
         html = engine.goto(url)
         results: list[SearchResult] = []
         seen: set[str] = set()
-        page = 1
+        page = start_offset // page_size + 1
+        current_offset = start_offset
 
         while len(results) < max_results:
             engine.scroll_to_bottom()
@@ -67,6 +78,8 @@ class ScienceDirectAdapter(SiteAdapter):
                 )
                 html = engine.html() or html
                 page_results = [result for result in self.extract_results(html) if result.url not in seen]
+            available_slots = max_results - len(results)
+            consumed_current_page = bool(page_results) and len(page_results) <= available_slots
             for result in page_results:
                 seen.add(result.url)
                 results.append(result)
@@ -74,15 +87,31 @@ class ScienceDirectAdapter(SiteAdapter):
                     break
 
             log.info("  [SD/browser] 第 %s 页 | 新增 %s 篇 | 共 %s 篇", page, len(page_results), len(results))
+            if consumed_current_page:
+                self.last_search_next_offset = current_offset + page_size
+            if not page_results:
+                self.last_search_finished = True
             if len(results) >= max_results or not page_results:
                 break
-            if not engine.click_next(self.next_selectors):
-                next_url = self._search_url(query, year_from, year_to, page_size, page * page_size)
-                log.info("  [SD/browser] 下一页按钮不可用，改用 offset 翻页: %s", page * page_size)
-                html = engine.goto(next_url)
+            offset = current_offset + page_size
+            self._wait_before_next_page(page)
+            next_url = self._search_url(query, year_from, year_to, page_size, offset)
+            log.info("  [SD/browser] 使用 offset 翻页: %s", offset)
+            html = engine.goto(next_url)
+            current_offset = offset
             page += 1
 
         return results[:max_results]
+
+    def _wait_before_next_page(self, completed_page: int):
+        if completed_page > 0 and completed_page % SD_PAGE_BATCH_SIZE == 0:
+            cooldown = random.uniform(*SD_PAGE_COOLDOWN_SECONDS)
+            log.info("  [SD/browser] 已连续翻页 %s 页，冷却 %.1f 秒", SD_PAGE_BATCH_SIZE, cooldown)
+            time.sleep(cooldown)
+
+        delay = random.uniform(*SD_PAGE_DELAY_SECONDS)
+        log.info("  [SD/browser] 翻页前等待 %.1f 秒", delay)
+        time.sleep(delay)
 
     def _search_url(
         self,

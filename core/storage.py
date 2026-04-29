@@ -187,6 +187,23 @@ class StorageManager:
                     foreign key(collection_id) references collections(id),
                     foreign key(article_id) references articles(id)
                 );
+
+                create table if not exists search_cursors (
+                    id integer primary key autoincrement,
+                    site text not null,
+                    search_key text not null,
+                    query text not null,
+                    year_from integer,
+                    year_to integer,
+                    options_json text not null default '{}',
+                    page_size integer not null,
+                    next_offset integer not null default 0,
+                    total_seen integer not null default 0,
+                    finished integer not null default 0,
+                    last_run_id text,
+                    updated_at text not null,
+                    unique(site, search_key)
+                );
                 """
             )
 
@@ -416,6 +433,91 @@ class StorageManager:
         path = self.run_dir(run_id) / "urls.txt"
         _write_text(path, "\n".join(urls))
         return path
+
+    # ─────────────────────────────────────────────
+    #  Search cursors
+    # ─────────────────────────────────────────────
+    def search_cursor_key(
+        self,
+        site: str | None = None,
+        query: str = "",
+        year_from: int | None = None,
+        year_to: int | None = None,
+        options: dict | None = None,
+    ) -> str:
+        payload = {
+            "site": site or self.site,
+            "query": query or "",
+            "year_from": year_from,
+            "year_to": year_to,
+            "options": options or {},
+        }
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+    def get_search_cursor(self, site: str, search_key: str) -> sqlite3.Row | None:
+        with self._connect() as conn:
+            return conn.execute(
+                "select * from search_cursors where site = ? and search_key = ?",
+                (site, search_key),
+            ).fetchone()
+
+    def upsert_search_cursor(
+        self,
+        site: str,
+        search_key: str,
+        query: str,
+        year_from: int | None,
+        year_to: int | None,
+        options: dict | None,
+        page_size: int,
+        next_offset: int,
+        total_seen: int,
+        finished: bool,
+        last_run_id: str | None = None,
+    ):
+        now = _now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                insert into search_cursors(site, search_key, query, year_from, year_to,
+                                           options_json, page_size, next_offset, total_seen,
+                                           finished, last_run_id, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                on conflict(site, search_key) do update set
+                    query = excluded.query,
+                    year_from = excluded.year_from,
+                    year_to = excluded.year_to,
+                    options_json = excluded.options_json,
+                    page_size = excluded.page_size,
+                    next_offset = excluded.next_offset,
+                    total_seen = excluded.total_seen,
+                    finished = excluded.finished,
+                    last_run_id = excluded.last_run_id,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    site,
+                    search_key,
+                    query,
+                    year_from,
+                    year_to,
+                    _json(options or {}),
+                    page_size,
+                    max(0, int(next_offset)),
+                    max(0, int(total_seen)),
+                    1 if finished else 0,
+                    last_run_id,
+                    now,
+                ),
+            )
+
+    def reset_search_cursor(self, site: str, search_key: str):
+        with self._connect() as conn:
+            conn.execute(
+                "delete from search_cursors where site = ? and search_key = ?",
+                (site, search_key),
+            )
 
     # ─────────────────────────────────────────────
     #  Collections

@@ -46,6 +46,107 @@ def test_sciencedirect_adapter_preserves_result_extraction_and_filters_pdf_links
     )
 
 
+def test_sciencedirect_search_uses_offset_pagination(monkeypatch):
+    from urllib.parse import parse_qs, urlparse
+
+    from sites.base import SearchFilters
+    from sites.registry import get_adapter
+
+    class FakeEngine:
+        def __init__(self):
+            self.gotos = []
+            self.current_html = ""
+
+        def goto(self, url):
+            self.gotos.append(url)
+            offset = int(parse_qs(urlparse(url).query).get("offset", ["0"])[0])
+            start = offset + 1
+            count = 25 if offset < 50 else 5
+            self.current_html = "<html><body>" + "".join(
+                f'<a class="result-list-title-link" href="/science/article/pii/S{i:03d}">Article {i}</a>'
+                for i in range(start, start + count)
+            ) + "</body></html>"
+            return self.current_html
+
+        def html(self):
+            return self.current_html
+
+        def scroll_to_bottom(self):
+            return None
+
+        def wait_for_user(self, _message):
+            raise AssertionError("wait_for_user should not be called")
+
+        def click_next(self, _selectors):
+            raise AssertionError("ScienceDirect search should use offset pagination")
+
+    adapter = get_adapter("sciencedirect")
+    monkeypatch.setattr(adapter, "_wait_before_next_page", lambda _page: None)
+    engine = FakeEngine()
+
+    results = adapter.search(engine, "membrane", 2025, 2025, max_results=55)
+
+    assert len(results) == 55
+    assert [parse_qs(urlparse(url).query).get("offset", ["0"])[0] for url in engine.gotos] == [
+        "0",
+        "25",
+        "50",
+    ]
+
+
+def test_sciencedirect_search_can_start_from_resume_offset(monkeypatch):
+    from urllib.parse import parse_qs, urlparse
+
+    from sites.base import SearchFilters
+    from sites.registry import get_adapter
+
+    class FakeEngine:
+        def __init__(self):
+            self.gotos = []
+            self.current_html = ""
+
+        def goto(self, url):
+            self.gotos.append(url)
+            offset = int(parse_qs(urlparse(url).query).get("offset", ["0"])[0])
+            self.current_html = (
+                "<html><body>"
+                f'<a class="result-list-title-link" href="/science/article/pii/S{offset + 1}">Article</a>'
+                "</body></html>"
+            )
+            return self.current_html
+
+        def html(self):
+            return self.current_html
+
+        def scroll_to_bottom(self):
+            return None
+
+        def wait_for_user(self, _message):
+            raise AssertionError("wait_for_user should not be called")
+
+        def click_next(self, _selectors):
+            raise AssertionError("ScienceDirect search should use offset pagination")
+
+    adapter = get_adapter("sciencedirect")
+    monkeypatch.setattr(adapter, "_wait_before_next_page", lambda _page: None)
+    engine = FakeEngine()
+
+    results = adapter.search(
+        engine,
+        "membrane",
+        2025,
+        2025,
+        max_results=1,
+        filters=SearchFilters(start_offset=500),
+    )
+
+    assert [result.url for result in results] == [
+        "https://www.sciencedirect.com/science/article/pii/S501"
+    ]
+    assert parse_qs(urlparse(engine.gotos[0]).query)["offset"] == ["500"]
+    assert adapter.last_search_next_offset == 525
+
+
 def test_springer_adapter_extracts_results_and_normalizes_urls():
     from sites.registry import get_adapter
 

@@ -21,6 +21,7 @@ class SearchFilters:
     journals: list[str] = field(default_factory=list)
     journal_family: str = ""
     sort: str = "relevance"
+    start_offset: int = 0
 
 
 class SiteAdapter:

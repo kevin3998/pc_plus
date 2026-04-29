@@ -324,6 +324,42 @@ def test_search_results_jsonl_is_written_for_run(tmp_path):
     assert [line["title"] for line in lines] == ["One", "Two"]
 
 
+def test_search_cursor_tracks_resume_offset(tmp_path):
+    from core.storage import StorageManager
+
+    storage = StorageManager(tmp_path, site="sciencedirect")
+    search_key = storage.search_cursor_key(
+        site="sciencedirect",
+        query="membrane",
+        year_from=2025,
+        year_to=2025,
+        options={"sort": "relevance"},
+    )
+
+    storage.upsert_search_cursor(
+        site="sciencedirect",
+        search_key=search_key,
+        query="membrane",
+        year_from=2025,
+        year_to=2025,
+        options={"sort": "relevance"},
+        page_size=25,
+        next_offset=500,
+        total_seen=500,
+        finished=False,
+        last_run_id="run-1",
+    )
+
+    cursor = storage.get_search_cursor("sciencedirect", search_key)
+    assert cursor["next_offset"] == 500
+    assert cursor["total_seen"] == 500
+    assert cursor["finished"] == 0
+    assert cursor["last_run_id"] == "run-1"
+
+    storage.reset_search_cursor("sciencedirect", search_key)
+    assert storage.get_search_cursor("sciencedirect", search_key) is None
+
+
 def test_collection_exports_search_results_and_reuses_slug(tmp_path):
     from core.storage import StorageManager
     from search.browser_search import SearchResult
