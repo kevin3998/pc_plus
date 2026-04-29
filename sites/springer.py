@@ -30,7 +30,15 @@ class SpringerAdapter(SiteAdapter):
         "li.next a",
     ]
 
-    def search(self, engine, query: str, year_from: int = 2024, year_to: int = 2025, max_results: int = 200):
+    def search(
+        self,
+        engine,
+        query: str,
+        year_from: int = 2024,
+        year_to: int = 2025,
+        max_results: int = 200,
+        filters=None,
+    ):
         url = f"{self.search_base}?{urlencode({
             'query': query,
             'date-facet-mode': 'between',

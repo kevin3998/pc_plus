@@ -1,4 +1,5 @@
 data/
+.DS_Store
 
 # Runtime/browser state
 browser_profile/

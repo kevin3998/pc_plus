@@ -116,17 +116,8 @@ class ArticleParser:
             log.info("  ↩ 已存在，跳过（断点续爬）")
             return True
 
-        adir = self.storage.article_dir(doi)
-        self.storage.save_meta(adir, meta)
-
-        # ── 原始 HTML ───────────────────────────
-        if opts["html"]:
-            self.storage.save_html(adir, html)
-
         # ── 摘要 ────────────────────────────────
         abstract = self._extract_abstract(soup)
-        if abstract:
-            self.storage.save_abstract(adir, abstract)
 
         # ── 正文 ────────────────────────────────
         md = ""
@@ -134,11 +125,29 @@ class ArticleParser:
             md = self._extract_fulltext(soup)
             valid, reason = self._validate_fulltext(soup, md, url)
             if not valid:
-                log.warning("  ✗ 正文不完整，跳过正文/资产保存: %s", reason)
+                failed_dir = self.storage.failed_article_dir(doi)
+                self.storage.save_failed_meta(failed_dir, meta, reason)
+                if opts["html"]:
+                    self.storage.save_html(failed_dir, html)
+                if abstract:
+                    self.storage.save_abstract(failed_dir, abstract)
+                log.warning("  ✗ 正文不完整，已归档到失败目录: %s", reason)
                 return False
             if abstract:
                 md = self._prepend_abstract(md, abstract)
             md = self._prepend_article_header(md, meta)
+
+        adir = self.storage.article_dir(doi)
+        self.storage.save_meta(adir, meta)
+
+        # ── 原始 HTML ───────────────────────────
+        if opts["html"]:
+            self.storage.save_html(adir, html)
+
+        if abstract:
+            self.storage.save_abstract(adir, abstract)
+
+        if opts["fulltext"]:
             self.storage.save_fulltext(adir, md)
 
         # ── 图片 ────────────────────────────────
@@ -364,7 +373,8 @@ class ArticleParser:
 
         # 定位正文容器
         body = None
-        for sel in self.BODY_SELECTORS:
+        selectors = self._body_selectors()
+        for sel in selectors:
             body = soup.select_one(sel)
             if body:
                 break
@@ -375,7 +385,23 @@ class ArticleParser:
 
         return self._html_to_md(body)
 
+    def _body_selectors(self) -> list[str]:
+        selectors = []
+        if self.adapter:
+            for method_name in ("preferred_body_selectors", "body_selectors"):
+                method = getattr(self.adapter, method_name, None)
+                if not method:
+                    continue
+                adapter_selectors = method()
+                selectors.extend(sel for sel in adapter_selectors if sel)
+                break
+        selectors.extend(self.BODY_SELECTORS)
+        return list(dict.fromkeys(selectors))
+
     def _validate_fulltext(self, soup: BeautifulSoup, markdown: str, url: str) -> tuple[bool, str]:
+        if self.adapter and hasattr(self.adapter, "validate_fulltext"):
+            return self.adapter.validate_fulltext(soup, markdown, url)
+
         if not _is_sciencedirect_url(url):
             return True, ""
 

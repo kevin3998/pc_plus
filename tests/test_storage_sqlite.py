@@ -21,6 +21,7 @@ def test_storage_initializes_sqlite_catalog_and_data_dirs(tmp_path):
     assert storage.db_path.exists()
     assert (tmp_path / "articles").is_dir()
     assert (tmp_path / "articles" / "sciencedirect" / "_library").is_dir()
+    assert (tmp_path / "articles" / "sciencedirect" / "_failed").is_dir()
     assert (tmp_path / "articles" / "sciencedirect" / "searches").is_dir()
     assert (tmp_path / "runs").is_dir()
     assert {r["name"] for r in rows(storage.db_path, "sqlite_master") if r["type"] == "table"} >= {
@@ -72,6 +73,129 @@ def test_article_parser_saves_article_in_site_scoped_layout_and_indexes_it(tmp_p
     assert article["article_key"] == "10.1016-j.indexed.2025.1"
     assert article["doi"] == "10.1016/j.indexed.2025.1"
     assert article["canonical_url"] == "https://www.sciencedirect.com/science/article/pii/SINDEX"
+
+
+def test_incomplete_sciencedirect_article_is_saved_to_failed_area_without_indexing(tmp_path):
+    from core.parser import ArticleParser
+    from core.storage import StorageManager
+
+    class NoNetworkSession:
+        def download_binary(self, *args, **kwargs):
+            return None
+
+    storage = StorageManager(tmp_path, site="sciencedirect")
+    parser = ArticleParser(NoNetworkSession(), storage)
+    incomplete_html = """
+    <html><head>
+      <meta name="citation_title" content="Incomplete Article">
+      <meta name="citation_doi" content="10.1016/j.incomplete.2025.1">
+    </head><body>
+      <article>
+        <section class="Abstracts"><h2>Abstract</h2><p>Only an abstract is visible.</p></section>
+      </article>
+    </body></html>
+    """
+
+    assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/SINCOMPLETE", incomplete_html, options={
+        "html": True,
+        "figures": False,
+        "tables": False,
+        "fulltext": True,
+    }) is False
+
+    failed_dir = tmp_path / "articles" / "sciencedirect" / "_failed" / "10.1016-j.incomplete.2025.1"
+    library_dir = tmp_path / "articles" / "sciencedirect" / "_library" / "10.1016-j.incomplete.2025.1"
+    meta = json.loads((failed_dir / "meta.json").read_text(encoding="utf-8"))
+
+    assert meta["_status"] == "failed"
+    assert meta["_failure_reason"] == "fulltext_incomplete_too_short"
+    assert (failed_dir / "raw" / "article.html").exists()
+    assert not (failed_dir / "parsed" / "fulltext.md").exists()
+    assert not library_dir.exists()
+    assert rows(storage.db_path, "articles") == []
+
+    complete_html = """
+    <html><head>
+      <meta name="citation_title" content="Incomplete Article">
+      <meta name="citation_doi" content="10.1016/j.incomplete.2025.1">
+    </head><body>
+      <article><div id="body"><h2>1. Introduction</h2><p>Now full text is visible.</p></div></article>
+    </body></html>
+    """
+
+    assert parser.parse_html("https://www.sciencedirect.com/science/article/pii/SINCOMPLETE", complete_html, options={
+        "html": True,
+        "figures": False,
+        "tables": False,
+        "fulltext": True,
+    }) is True
+    assert (library_dir / "meta.json").exists()
+    assert (library_dir / "parsed" / "fulltext.md").exists()
+    assert len(rows(storage.db_path, "articles")) == 1
+
+
+def test_incomplete_nature_article_is_saved_to_failed_area_without_indexing(tmp_path):
+    from core.parser import ArticleParser
+    from core.storage import StorageManager
+    from sites.registry import get_adapter
+
+    class NoNetworkSession:
+        def download_binary(self, *args, **kwargs):
+            return None
+
+    storage = StorageManager(tmp_path, site="nature")
+    parser = ArticleParser(NoNetworkSession(), storage, adapter=get_adapter("nature"))
+    incomplete_html = """
+    <html><head>
+      <meta name="citation_title" content="Nature Incomplete Article">
+      <meta name="citation_doi" content="10.1038/s41586-025-00001">
+    </head><body>
+      <article>
+        <section><h2>Abstract</h2><p>Only the abstract is visible.</p></section>
+        <p>Access through your institution</p>
+      </article>
+    </body></html>
+    """
+
+    assert parser.parse_html("https://www.nature.com/articles/s41586-025-00001", incomplete_html, options={
+        "html": True,
+        "figures": False,
+        "tables": False,
+        "fulltext": True,
+    }) is False
+
+    failed_dir = tmp_path / "articles" / "nature" / "_failed" / "10.1038-s41586-025-00001"
+    library_dir = tmp_path / "articles" / "nature" / "_library" / "10.1038-s41586-025-00001"
+    meta = json.loads((failed_dir / "meta.json").read_text(encoding="utf-8"))
+
+    assert meta["_status"] == "failed"
+    assert meta["_failure_reason"] == "nature_fulltext_not_available_or_no_access"
+    assert (failed_dir / "raw" / "article.html").exists()
+    assert not library_dir.exists()
+    assert rows(storage.db_path, "articles") == []
+
+    complete_html = """
+    <html><head>
+      <meta name="citation_title" content="Nature Incomplete Article">
+      <meta name="citation_doi" content="10.1038/s41586-025-00001">
+    </head><body>
+      <article>
+        <div class="c-article-body">
+          <section data-title="Introduction"><h2>Introduction</h2><p>Now full text is visible.</p></section>
+        </div>
+      </article>
+    </body></html>
+    """
+
+    assert parser.parse_html("https://www.nature.com/articles/s41586-025-00001", complete_html, options={
+        "html": True,
+        "figures": False,
+        "tables": False,
+        "fulltext": True,
+    }) is True
+    assert (library_dir / "meta.json").exists()
+    assert (library_dir / "parsed" / "fulltext.md").exists()
+    assert len(rows(storage.db_path, "articles")) == 1
 
 
 def test_sciencedirect_abstract_is_saved_and_prepended_to_fulltext(tmp_path):

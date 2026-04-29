@@ -66,6 +66,7 @@ class StorageManager:
         self.articles_root.mkdir(parents=True, exist_ok=True)
         self.runs_root.mkdir(parents=True, exist_ok=True)
         self.library_root(site).mkdir(parents=True, exist_ok=True)
+        self.failed_root(site).mkdir(parents=True, exist_ok=True)
         self.searches_root(site).mkdir(parents=True, exist_ok=True)
         self._init_db()
 
@@ -200,6 +201,11 @@ class StorageManager:
 
     def library_root(self, site: str | None = None) -> Path:
         d = self.site_root(site) / "_library"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def failed_root(self, site: str | None = None) -> Path:
+        d = self.site_root(site) / "_failed"
         d.mkdir(parents=True, exist_ok=True)
         return d
 
@@ -748,6 +754,13 @@ class StorageManager:
             (d / sub).mkdir(parents=True, exist_ok=True)
         return d
 
+    def failed_article_dir(self, doi_or_url: str, site: str | None = None) -> Path:
+        selected_site = site or self.site
+        d = self.failed_root(selected_site) / self.article_key(doi_or_url)
+        for sub in ("raw", "parsed"):
+            (d / sub).mkdir(parents=True, exist_ok=True)
+        return d
+
     def article_exists(self, doi_or_url: str, site: str | None = None) -> bool:
         selected_site = site or self.site
         key = self.article_key(doi_or_url)
@@ -770,6 +783,13 @@ class StorageManager:
         meta["_saved_at"] = _now()
         article_id = self._upsert_article(adir, meta)
         self._dir_article_ids[str(adir)] = article_id
+        _write_json(adir / "meta.json", meta)
+
+    def save_failed_meta(self, adir: Path, meta: dict, reason: str):
+        meta = dict(meta)
+        meta["_status"] = STATUS_FAILED
+        meta["_failure_reason"] = reason
+        meta["_failed_at"] = _now()
         _write_json(adir / "meta.json", meta)
 
     def save_fulltext(self, adir: Path, markdown: str):

@@ -35,7 +35,15 @@ class ScienceDirectAdapter(SiteAdapter):
         "a[aria-label='Next page']",
     ]
 
-    def search(self, engine, query: str, year_from: int = 2024, year_to: int = 2025, max_results: int = 200):
+    def search(
+        self,
+        engine,
+        query: str,
+        year_from: int = 2024,
+        year_to: int = 2025,
+        max_results: int = 200,
+        filters=None,
+    ):
         page_size = 25
         url = f"{self.search_base}?{urlencode({
             'qs': query,

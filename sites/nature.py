@@ -8,9 +8,36 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from core.assets import AssetCandidate
-from sites.base import SearchResult, SiteAdapter, first_year
+from sites.base import SearchFilters, SearchResult, SiteAdapter, first_year
+from sites.nature_journals import NatureJournal, resolve_journals
 
 log = logging.getLogger("sites.nature")
+
+NATURE_FULLTEXT_MIN_CHARS = 1200
+NATURE_NO_ACCESS_SIGNALS = (
+    "access through your institution",
+    "access through your organization",
+    "check access to the full text",
+    "sign in to access",
+    "get access",
+    "rent or buy",
+    "purchase",
+    "subscribe to this journal",
+)
+NATURE_INCOMPLETE_HEADINGS = {
+    "abstract",
+    "references",
+    "acknowledgements",
+    "acknowledgments",
+    "author information",
+    "ethics declarations",
+    "rights and permissions",
+    "about this article",
+    "recommended articles",
+    "related articles",
+    "metrics",
+    "figures",
+}
 
 
 class NatureAdapter(SiteAdapter):
@@ -34,6 +61,32 @@ class NatureAdapter(SiteAdapter):
         "a.c-pagination__link[aria-label*='Next']",
     ]
 
+    def preferred_body_selectors(self) -> list[str]:
+        return [
+            "div.c-article-body",
+            "article div.c-article-body",
+            "article [data-title]",
+            "section[data-title]",
+            "div[class*='article-body']",
+            "div[class*='ArticleBody']",
+            "main article",
+            "article",
+        ]
+
+    def validate_fulltext(self, soup: BeautifulSoup, markdown: str, url: str) -> tuple[bool, str]:
+        if "nature.com" not in urlparse(url).netloc.lower():
+            return True, ""
+        if self._has_no_access_signal(soup) and not self._has_body_signal(soup):
+            return False, "nature_fulltext_not_available_or_no_access"
+        if self._has_body_signal(soup):
+            return True, ""
+        md_text = re.sub(r"\s+", " ", markdown or "").strip()
+        if len(md_text) < NATURE_FULLTEXT_MIN_CHARS:
+            return False, "nature_fulltext_incomplete_too_short"
+        if not self._content_headings(soup):
+            return False, "nature_fulltext_incomplete_no_body_signal"
+        return True, ""
+
     def normalize_url(self, url: str) -> str:
         parsed = urlparse(urljoin("https://www.nature.com", url))
         host = parsed.netloc.lower()
@@ -51,11 +104,20 @@ class NatureAdapter(SiteAdapter):
             return ""
         return f"https://www.nature.com/articles/{article_id}"
 
-    def search(self, engine, query: str, year_from: int = 2024, year_to: int = 2025, max_results: int = 200):
-        url = f"{self.search_base}?{urlencode({
-            'q': query,
-            'date_range': f'{year_from}-{year_to}',
-        })}"
+    def search(
+        self,
+        engine,
+        query: str,
+        year_from: int = 2024,
+        year_to: int = 2025,
+        max_results: int = 200,
+        filters: SearchFilters | None = None,
+    ):
+        selected_journals = resolve_journals(
+            filters.journals if filters else [],
+            filters.journal_family if filters else "",
+        )
+        url = self._search_url(query, year_from, year_to, selected_journals)
         html = engine.goto(url)
         results: list[SearchResult] = []
         seen: set[str] = set()
@@ -67,7 +129,9 @@ class NatureAdapter(SiteAdapter):
             page_results = [
                 result
                 for result in self.extract_results(html)
-                if result.url not in seen and self._year_in_range(result.year, year_from, year_to)
+                if result.url not in seen
+                and self._year_in_range(result.year, year_from, year_to)
+                and self._result_matches_selected_journals(result, selected_journals)
             ]
             for result in page_results:
                 seen.add(result.url)
@@ -83,6 +147,21 @@ class NatureAdapter(SiteAdapter):
             page += 1
 
         return results[:max_results]
+
+    def _search_url(
+        self,
+        query: str,
+        year_from: int,
+        year_to: int,
+        journals: list[NatureJournal],
+    ) -> str:
+        params: list[tuple[str, str]] = [
+            ("q", query),
+            ("date_range", f"{year_from}-{year_to}"),
+        ]
+        for journal in journals:
+            params.append(("journal", journal.key))
+        return f"{self.search_base}?{urlencode(params)}"
 
     def extract_results(self, html: str) -> list[SearchResult]:
         soup = BeautifulSoup(html, "lxml")
@@ -138,9 +217,11 @@ class NatureAdapter(SiteAdapter):
                 href = anchor.get("href", "")
                 text = anchor.get_text(" ", strip=True).lower()
                 title = " ".join(str(anchor.get(attr, "")) for attr in ("title", "aria-label")).lower()
+                url = urljoin(page_url, href)
+                if self._is_figure_page_url(url, page_url):
+                    continue
                 if "full size" not in f"{text} {title}":
                     continue
-                url = urljoin(page_url, href)
                 if self._is_article_image_url(url, page_url):
                     figure_urls.append((0, url, "nature_fullsize_link"))
 
@@ -285,6 +366,58 @@ class NatureAdapter(SiteAdapter):
         return year_from <= value <= year_to
 
     @staticmethod
+    def _result_matches_selected_journals(result: SearchResult, journals: list[NatureJournal]) -> bool:
+        if not journals:
+            return True
+        haystack = f"{result.title} {result.url}".lower()
+        if not haystack.strip():
+            return True
+        for journal in journals:
+            names = [journal.name, journal.key, *journal.aliases]
+            if any((name or "").lower() in haystack for name in names):
+                return True
+        return True
+
+    @staticmethod
+    def _has_no_access_signal(soup: BeautifulSoup) -> bool:
+        text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True)).lower()
+        return any(signal in text for signal in NATURE_NO_ACCESS_SIGNALS)
+
+    @staticmethod
+    def _has_body_signal(soup: BeautifulSoup) -> bool:
+        if soup.select_one(
+            "div.c-article-body, article div.c-article-body, "
+            "article [data-title], section[data-title], "
+            "div[class*='article-body'], div[class*='ArticleBody']"
+        ):
+            return True
+        headings = NatureAdapter._content_headings(soup)
+        if any(re.search(r"(^|\b)(\d+\.?\s*)?introduction\b", heading, re.I) for heading in headings):
+            return True
+        if any(re.search(r"\b(results?|discussion|methods?|conclusion)\b", heading, re.I) for heading in headings):
+            return True
+        if any(re.search(r"\bmaterials?\s+and\s+methods?\b", heading, re.I) for heading in headings):
+            return True
+        return False
+
+    @staticmethod
+    def _content_headings(soup: BeautifulSoup) -> list[str]:
+        headings = []
+        for el in soup.select("article h2, article h3, article h4, main h2, main h3, main h4"):
+            text = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
+            if not text:
+                continue
+            lower_text = text.lower()
+            if lower_text in NATURE_INCOMPLETE_HEADINGS:
+                continue
+            if lower_text.startswith(("references", "recommended articles", "related articles", "about this article")):
+                continue
+            if any(signal in lower_text for signal in NATURE_NO_ACCESS_SIGNALS):
+                continue
+            headings.append(text)
+        return headings
+
+    @staticmethod
     def _image_urls_from_srcset(page_url: str, srcset: str) -> list[str]:
         parts = []
         for raw_part in (srcset or "").split(","):
@@ -319,6 +452,10 @@ class NatureAdapter(SiteAdapter):
                 upgraded_path = re.sub(r"/w\d+h\d+/", replacement, upgraded_path, count=1)
                 if upgraded_path != path:
                     candidates.append(urlunparse(parsed._replace(path=upgraded_path, query=urlencode(query))))
+            if "w" not in query:
+                highres_query = dict(query)
+                highres_query["w"] = "1800"
+                candidates.append(urlunparse(parsed._replace(query=urlencode(highres_query))))
 
         if "w" in query:
             try:
@@ -363,6 +500,12 @@ class NatureAdapter(SiteAdapter):
         if "nature.com" in host or "springernature.com" in host:
             return True
         return False
+
+    @staticmethod
+    def _is_figure_page_url(url: str, page_url: str) -> bool:
+        parsed = urlparse(urljoin(page_url, url))
+        host = parsed.netloc.lower()
+        return "nature.com" in host and bool(re.search(r"/articles/[^/]+/figures/\d+", parsed.path))
 
     @staticmethod
     def _figure_text(figure) -> tuple[str, str]:
@@ -417,4 +560,8 @@ class NatureAdapter(SiteAdapter):
     def _image_identity_key(url: str) -> str:
         parsed = urlparse(url)
         path = re.sub(r"/(?:full|lw\d+|m\d+|w\d+h\d+)/", "/", parsed.path.lower(), count=1)
-        return path
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        for key in ("w", "h", "width", "height", "as"):
+            query.pop(key, None)
+        query_part = urlencode(sorted(query.items()))
+        return f"{path}?{query_part}" if query_part else path

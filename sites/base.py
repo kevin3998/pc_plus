@@ -1,7 +1,7 @@
 """Base types for site-specific search and article rules."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -14,6 +14,13 @@ class SearchResult:
     url: str
     title: str
     year: str = ""
+
+
+@dataclass
+class SearchFilters:
+    journals: list[str] = field(default_factory=list)
+    journal_family: str = ""
+    sort: str = "relevance"
 
 
 class SiteAdapter:
@@ -43,6 +50,7 @@ class SiteAdapter:
         year_from: int = 2024,
         year_to: int = 2025,
         max_results: int = 200,
+        filters: SearchFilters | None = None,
     ) -> list[SearchResult]:
         raise NotImplementedError(f"{self.key} adapter search is not implemented yet")
 

@@ -46,6 +46,7 @@ from core.browser import BrowserEngine
 from core.downloader import BinaryDownloadSession
 from core.storage import StorageManager
 from core.parser import ArticleParser
+from sites.base import SearchFilters
 from sites.registry import detect_adapter, get_adapter
 
 
@@ -123,13 +124,18 @@ def cmd_search(args):
         sys.exit(1)
 
     storage = StorageManager(DATA_DIR, site=site)
+    filters = _search_filters_from_args(args)
     run_id = storage.create_run(
         site=site,
         query=args.query,
         year_from=args.year_from,
         year_to=args.year_to,
         max_results=args.max,
-        options=_content_options_from_args(args),
+        options={
+            **_content_options_from_args(args),
+            "journals": list(getattr(args, "journal", []) or []),
+            "journal_family": getattr(args, "journal_family", "") or "",
+        },
         run_type="search",
     )
 
@@ -152,6 +158,7 @@ def cmd_search(args):
             year_from=args.year_from,
             year_to=args.year_to,
             max_results=args.max,
+            filters=filters,
         )
     finally:
         engine.stop()
@@ -418,6 +425,8 @@ def _collection_for_crawl(storage: StorageManager, args, site: str, urls: list[s
             **_content_options_from_args(args),
             "source_file": getattr(args, "file", ""),
             "source_url": getattr(args, "url", ""),
+            "journals": list(getattr(args, "journal", []) or []),
+            "journal_family": getattr(args, "journal_family", "") or "",
         },
     )
 
@@ -444,6 +453,13 @@ def _content_options_from_args(args) -> dict:
         "min_image_bytes": getattr(args, "min_image_bytes", 1000),
         "asset_timeout": getattr(args, "asset_timeout", 30),
     }
+
+
+def _search_filters_from_args(args) -> SearchFilters:
+    return SearchFilters(
+        journals=list(getattr(args, "journal", []) or []),
+        journal_family=getattr(args, "journal_family", "") or "",
+    )
 
 
 # ─────────────────────────────────────────────
@@ -479,6 +495,17 @@ def build_parser() -> argparse.ArgumentParser:
                           help="浏览器搜索使用一次新的干净 Chrome profile")
     s_search.add_argument("--inject-browser-cookies", action="store_true",
                           help="将 cookies.json 注入浏览器搜索 profile（默认不注入）")
+    s_search.add_argument(
+        "--journal",
+        action="append",
+        default=[],
+        help="Nature 子刊过滤，可重复指定，例如 --journal nc --journal npjcompumats",
+    )
+    s_search.add_argument(
+        "--journal-family",
+        default="",
+        help="Nature 子刊族过滤，例如 npj",
+    )
     _add_content_flags(s_search)
 
     # crawl
