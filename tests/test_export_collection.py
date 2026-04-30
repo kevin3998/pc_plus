@@ -183,3 +183,51 @@ def test_export_collection_merges_multiple_collections_and_deduplicates(tmp_path
         "transparent-conductive-oxide_y2021-2022",
     ]
     assert summary["deduplicated"] == 1
+
+
+def test_export_topic_collection_copies_cross_site_articles_and_reports_missing(tmp_path):
+    from core.storage import StorageManager
+    from scripts.export_collection import export_topic_collection
+    from search.browser_search import SearchResult
+
+    storage = StorageManager(tmp_path, site="sciencedirect")
+    topic_id = storage.create_or_get_topic_collection("nanofiltration-membrane")
+    complete_url = "https://www.sciencedirect.com/science/article/pii/SCOMPLETE"
+    missing_url = "https://www.nature.com/articles/s41586-025-00001"
+    storage.add_topic_collection_search_results(topic_id, "sciencedirect", [
+        SearchResult(url=complete_url, title="Complete", year="2025"),
+    ], source_run_id="sd-run", source_query="membrane")
+    storage.add_topic_collection_search_results(topic_id, "nature", [
+        SearchResult(url=missing_url, title="Missing", year="2025"),
+    ], source_run_id="nature-run", source_query="membrane")
+
+    article_dir = storage.article_dir("10.1016/j.complete.2025.1", site="sciencedirect")
+    storage.save_meta(article_dir, {
+        "url": complete_url,
+        "doi": "10.1016/j.complete.2025.1",
+        "title": "Complete Article",
+        "year": "2025",
+    })
+    storage.save_fulltext(article_dir, "# Complete\n")
+    article_id = storage.last_article_id(article_dir)
+    storage.add_article_to_topic_collection(topic_id, "sciencedirect", article_id, complete_url)
+
+    out_dir = tmp_path / "topic-export"
+    result = export_topic_collection(
+        db_path=tmp_path / "catalog.sqlite",
+        base_dir=tmp_path,
+        topic_slug="nanofiltration-membrane",
+        out_dir=out_dir,
+    )
+
+    assert result.total_items == 2
+    assert result.exported == 1
+    assert result.missing == 1
+    assert (out_dir / "articles" / "001__10.1016-j.complete.2025.1").exists()
+    manifest_rows = _read_csv(out_dir / "manifest.csv")
+    assert manifest_rows[0]["topic_collection"] == "nanofiltration-membrane"
+    assert manifest_rows[0]["site"] == "sciencedirect"
+    assert manifest_rows[0]["source_query"] == "membrane"
+    missing_rows = _read_csv(out_dir / "missing.csv")
+    assert missing_rows[0]["url"] == missing_url
+    assert missing_rows[0]["reason"] == "no_article_id"

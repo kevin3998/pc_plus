@@ -39,6 +39,19 @@ def test_project_packages_import():
     assert CrawlState
 
 
+def test_browser_challenge_detection_avoids_generic_verification_false_positive():
+    from core.browser import BrowserEngine
+
+    normal_article_text = (
+        "This article discusses experimental verification of membrane performance "
+        "and validation of the filtration model in water treatment."
+    )
+    assert BrowserEngine._challenge_match(normal_article_text, "ScienceDirect article") is False
+
+    challenge_text = "Are you a robot? Please complete the security check to continue."
+    assert BrowserEngine._challenge_match(challenge_text, "Security check") is True
+
+
 def test_main_without_args_prints_browser_mainline_help():
     result = run_main()
 
@@ -393,6 +406,53 @@ def test_search_result_handler_writes_default_urls_inside_run_dir(tmp_path, monk
     assert '"title": "First"' in (collection_dir / "articles.jsonl").read_text()
     run_json = json.loads((tmp_path / "data" / "runs" / run_id / "run.json").read_text())
     assert run_json["options"]["collection_slug"] == "q_yany-any"
+
+
+def test_search_result_handler_writes_topic_collection_when_requested(tmp_path, monkeypatch):
+    import main
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    monkeypatch.chdir(tmp_path)
+    storage = StorageManager(tmp_path / "data", site="sciencedirect")
+    run_id = storage.create_run(site="sciencedirect", query="nanofiltration", run_type="search")
+    args = types.SimpleNamespace(
+        output_urls=None,
+        crawl=False,
+        collection="nanofiltration-membrane",
+        collection_title="Nanofiltration Membrane",
+        site="sciencedirect",
+    )
+
+    main._handle_search_results([
+        SearchResult(url="https://www.sciencedirect.com/science/article/pii/S123", title="First", year="2025")
+    ], cm=None, args=args, storage=storage, run_id=run_id)
+
+    topic_dir = tmp_path / "data" / "collections" / "nanofiltration-membrane"
+    assert (topic_dir / "urls.txt").read_text() == "https://www.sciencedirect.com/science/article/pii/S123"
+    assert '"title": "First"' in (topic_dir / "articles.jsonl").read_text()
+    run_json = json.loads((tmp_path / "data" / "runs" / run_id / "run.json").read_text())
+    assert run_json["options"]["topic_collection_slug"] == "nanofiltration-membrane"
+
+
+def test_collections_command_parses_subcommands():
+    import main
+
+    parser = main.build_parser()
+
+    show = parser.parse_args(["collections", "show", "--collection", "nanofiltration-membrane"])
+    assert show.command == "collections"
+    assert show.collections_command == "show"
+    assert show.collection == "nanofiltration-membrane"
+
+    imported = parser.parse_args([
+        "collections", "import-search",
+        "--site", "nature",
+        "--search", "water-membrane_y2021-2025",
+        "--collection", "nanofiltration-membrane",
+    ])
+    assert imported.collections_command == "import-search"
+    assert imported.site == "nature"
 
 
 def test_search_result_handler_writes_explicit_compat_urls_file(tmp_path, monkeypatch):

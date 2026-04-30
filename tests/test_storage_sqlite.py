@@ -399,6 +399,85 @@ def test_collection_exports_search_results_and_reuses_slug(tmp_path):
     assert '"title": "Two"' in (collection_dir / "articles.jsonl").read_text()
 
 
+def test_topic_collection_exports_cross_site_links_and_deduplicates_urls(tmp_path):
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    storage = StorageManager(tmp_path, site="sciencedirect")
+    topic_id = storage.create_or_get_topic_collection(
+        slug="nanofiltration-membrane",
+        title="Nanofiltration Membrane",
+    )
+    same_topic = storage.create_or_get_topic_collection(slug="nanofiltration-membrane")
+    assert same_topic == topic_id
+
+    url = "https://www.sciencedirect.com/science/article/pii/STOPIC"
+    storage.add_topic_collection_search_results(
+        topic_id,
+        site="sciencedirect",
+        results=[
+            SearchResult(url=url, title="Search Title", year="2025"),
+            SearchResult(url=url, title="Updated Search Title", year="2025"),
+        ],
+        source_run_id="run-1",
+        source_query="nanofiltration",
+    )
+
+    adir = storage.article_dir("10.1016/j.topic.2025.1")
+    storage.save_meta(adir, {
+        "url": url,
+        "doi": "10.1016/j.topic.2025.1",
+        "title": "Topic Article",
+        "journal": "Journal of Membranes",
+        "year": "2025",
+    })
+    storage.save_fulltext(adir, "# Topic Article\n\nBody")
+    article_id = storage.last_article_id(adir)
+    storage.add_article_to_topic_collection(topic_id, "sciencedirect", article_id, url=url, status="done")
+
+    topic_dir = tmp_path / "collections" / "nanofiltration-membrane"
+    assert (topic_dir / "urls.txt").read_text() == url
+    csv_text = (topic_dir / "articles.csv").read_text()
+    assert "Topic Article" in csv_text
+    assert "sciencedirect" in csv_text
+    assert "run-1" in (topic_dir / "articles.jsonl").read_text()
+    link = topic_dir / "article_links" / "sciencedirect__10.1016-j.topic.2025.1"
+    fallback = topic_dir / "article_links" / "sciencedirect__10.1016-j.topic.2025.1.link.json"
+    assert link.exists() or fallback.exists()
+
+    topic_rows = rows(storage.db_path, "topic_collection_items")
+    assert len(topic_rows) == 1
+    assert topic_rows[0]["article_id"] == article_id
+
+
+def test_topic_collection_can_import_existing_search_collection(tmp_path):
+    from core.storage import StorageManager
+    from search.browser_search import SearchResult
+
+    storage = StorageManager(tmp_path, site="nature")
+    search_id = storage.create_or_get_collection(
+        site="nature",
+        query="water membrane",
+        year_from=2021,
+        year_to=2025,
+    )
+    storage.add_collection_search_results(search_id, [
+        SearchResult(url="https://www.nature.com/articles/s41586-025-00001", title="Nature Result", year="2025"),
+    ])
+
+    topic_id = storage.import_search_collection_to_topic(
+        topic_slug="nanofiltration-membrane",
+        site="nature",
+        search_slug="water-membrane_y2021-2025",
+        topic_title="Nanofiltration Membrane",
+    )
+
+    topic_dir = tmp_path / "collections" / "nanofiltration-membrane"
+    assert topic_id
+    assert "https://www.nature.com/articles/s41586-025-00001" in (topic_dir / "urls.txt").read_text()
+    assert "water membrane" in (topic_dir / "articles.jsonl").read_text()
+
+
 def test_collection_exports_are_completed_after_article_metadata_is_saved(tmp_path):
     from core.storage import StorageManager
     from search.browser_search import SearchResult

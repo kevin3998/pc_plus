@@ -46,7 +46,7 @@ from core.browser import BrowserEngine
 from core.downloader import BinaryDownloadSession
 from core.storage import StorageManager
 from core.parser import ArticleParser
-from sites.base import SearchFilters
+from sites.base import SearchFilters, SearchResult
 from sites.registry import detect_adapter, get_adapter
 
 
@@ -226,6 +226,17 @@ def _handle_search_results(results, cm, args, storage: StorageManager, run_id: s
     storage.add_run_items(run_id, urls, results=results)
     collection_id = _collection_for_search(storage, run_id)
     storage.add_collection_search_results(collection_id, results)
+    topic_collection_id = _topic_collection_for_search(storage, run_id, args)
+    if topic_collection_id:
+        run = storage.run_info(run_id) or {}
+        storage.add_topic_collection_search_results(
+            topic_collection_id,
+            site=run.get("site") or storage.site,
+            results=results,
+            source_run_id=run_id,
+            source_collection_id=collection_id,
+            source_query=run.get("query") or "",
+        )
     print(f"\n✅ 找到 {len(results)} 篇，URL 已保存至 {run_url_file}")
     if compat_url_file:
         print(f"兼容 URL 文件: {compat_url_file}")
@@ -275,6 +286,48 @@ def cmd_list_sites(args):
     for key, cfg in JOURNAL_CONFIGS.items():
         print(f"  {key:<15} {cfg['name']}")
     print()
+
+
+def cmd_collections(args):
+    storage = StorageManager(DATA_DIR)
+    action = getattr(args, "collections_command", "")
+    if action == "list":
+        rows = storage.list_topic_collections()
+        print("\n主题集合：\n")
+        for row in rows:
+            print(f"  {row['slug']:<32} items={row['item_count'] or 0} articles={row['article_count'] or 0}")
+        print()
+        return
+    if action == "show":
+        row = storage.topic_collection_info(args.collection)
+        if not row:
+            print(f"未找到主题集合: {args.collection}")
+            sys.exit(1)
+        print(f"\n主题集合: {row['slug']}")
+        print(f"标题: {row['title'] or ''}")
+        print(f"条目: {row['item_count'] or 0}")
+        print(f"已有文章: {row['article_count'] or 0}")
+        print(f"目录: {storage.topic_collection_dir(row['id'])}")
+        return
+    if action == "import-search":
+        topic_id = storage.import_search_collection_to_topic(
+            topic_slug=args.collection,
+            site=args.site,
+            search_slug=args.search,
+            topic_title=getattr(args, "collection_title", "") or "",
+        )
+        print(f"已导入到主题集合: {storage.topic_collection_dir(topic_id)}")
+        return
+    if action == "refresh":
+        row = storage.topic_collection_info(args.collection)
+        if not row:
+            print(f"未找到主题集合: {args.collection}")
+            sys.exit(1)
+        storage.refresh_topic_collection_exports(row["id"])
+        print(f"已刷新主题集合: {storage.topic_collection_dir(row['id'])}")
+        return
+    print("请指定 collections 子命令")
+    sys.exit(1)
 
 
 def _collect_crawl_urls(args) -> list[str]:
@@ -364,6 +417,16 @@ def _do_browser_crawl(
         )
     collection_id = _collection_for_crawl(storage, args, site=site, urls=urls)
     storage.attach_run_to_collection(run_id, collection_id)
+    topic_collection_id = _topic_collection_for_crawl(storage, args, run_id)
+    if topic_collection_id:
+        storage.add_topic_collection_search_results(
+            topic_collection_id,
+            site=site,
+            results=[SearchResult(url=url, title="", year="") for url in urls],
+            source_run_id=run_id,
+            source_collection_id=collection_id,
+            source_query=getattr(args, "query", "") or "",
+        )
     storage.add_run_items(run_id, urls)
     pending = [u for u in storage.pending_urls(run_id) if u in set(urls)]
     log.info(f"浏览器待处理: {len(pending)} / {len(urls)} 篇")
@@ -386,6 +449,8 @@ def _do_browser_crawl(
                 storage.mark_skipped(run_id, url)
                 article_id = storage.find_article_id(url, site=site)
                 storage.add_article_to_collection(collection_id, article_id, url=url, status="skipped")
+                if topic_collection_id:
+                    storage.add_article_to_topic_collection(topic_collection_id, site, article_id, url=url, status="skipped", source_run_id=run_id, source_collection_id=collection_id)
                 skipped += 1
                 continue
             try:
@@ -395,6 +460,8 @@ def _do_browser_crawl(
                     article_id = storage.last_article_id()
                     storage.mark_done(run_id, url, article_id=article_id)
                     storage.add_article_to_collection(collection_id, article_id, url=url)
+                    if topic_collection_id:
+                        storage.add_article_to_topic_collection(topic_collection_id, site, article_id, url=url, source_run_id=run_id, source_collection_id=collection_id)
                     success += 1
                 else:
                     storage.mark_failed(run_id, url, "parse returned false")
@@ -451,6 +518,33 @@ def _collection_for_search(storage: StorageManager, run_id: str) -> int:
     )
     storage.attach_run_to_collection(run_id, collection_id)
     return collection_id
+
+
+def _topic_collection_for_search(storage: StorageManager, run_id: str, args) -> int | None:
+    slug = getattr(args, "collection", "") or ""
+    if not slug:
+        return None
+    topic_id = storage.create_or_get_topic_collection(
+        slug=slug,
+        title=getattr(args, "collection_title", "") or "",
+    )
+    storage.attach_run_to_topic_collection(run_id, topic_id)
+    return topic_id
+
+
+def _topic_collection_for_crawl(storage: StorageManager, args, run_id: str) -> int | None:
+    slug = getattr(args, "collection", "") or ""
+    if slug:
+        topic_id = storage.create_or_get_topic_collection(slug=slug)
+        storage.attach_run_to_topic_collection(run_id, topic_id)
+        return topic_id
+    source_run_id = _run_id_from_urls_file(getattr(args, "file", ""))
+    if source_run_id:
+        existing = storage.topic_collection_for_run(source_run_id)
+        if existing:
+            storage.attach_run_to_topic_collection(run_id, existing)
+            return existing
+    return None
 
 
 def _collection_for_crawl(storage: StorageManager, args, site: str, urls: list[str]) -> int:
@@ -546,6 +640,10 @@ def build_parser() -> argparse.ArgumentParser:
     s_search.add_argument("--max",       type=int, default=200, help="最多爬取篇数")
     s_search.add_argument("--output-urls", default=None,
                           help="额外写出一份兼容 URL 列表；默认只写入当前 run 目录")
+    s_search.add_argument("--collection", default="",
+                          help="追加到人工主题集合，例如 nanofiltration-membrane")
+    s_search.add_argument("--collection-title", default="",
+                          help="主题集合显示标题，仅创建/更新主题集合时使用")
     s_search.add_argument("--crawl",     action="store_true", help="检索后立即爬取")
     s_search.add_argument("--browser",   action="store_true", help="兼容参数；搜索始终使用 Patchright 浏览器")
     s_search.add_argument("--fresh-browser-profile", action="store_true",
@@ -577,6 +675,8 @@ def build_parser() -> argparse.ArgumentParser:
     grp.add_argument("--file", help="URL列表文件（每行一个）")
     grp.add_argument("--url",  help="单个文章URL")
     s_crawl.add_argument("--site", help=f"强制指定站点: {', '.join(JOURNAL_CONFIGS)}")
+    s_crawl.add_argument("--collection", default="",
+                         help="追加到人工主题集合，例如 nanofiltration-membrane")
     s_crawl.add_argument("--browser", action="store_true", help="兼容参数；爬取始终使用 Patchright 浏览器")
     s_crawl.add_argument("--inject-browser-cookies", action="store_true",
                          help="将 cookies.json 注入浏览器 crawl profile（默认不注入）")
@@ -588,6 +688,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     # sites
     sub.add_parser("sites", help="列出支持的期刊站点")
+
+    # collections
+    s_collections = sub.add_parser("collections", help="管理人工主题集合")
+    col_sub = s_collections.add_subparsers(dest="collections_command")
+    col_sub.add_parser("list", help="列出主题集合")
+    col_show = col_sub.add_parser("show", help="查看主题集合")
+    col_show.add_argument("--collection", required=True)
+    col_import = col_sub.add_parser("import-search", help="导入已有站点检索集合到主题集合")
+    col_import.add_argument("--site", required=True)
+    col_import.add_argument("--search", required=True, help="articles/{site}/searches 下的 collection slug")
+    col_import.add_argument("--collection", required=True, help="目标主题集合 slug")
+    col_import.add_argument("--collection-title", default="", help="目标主题集合标题")
+    col_refresh = col_sub.add_parser("refresh", help="刷新主题集合导出文件")
+    col_refresh.add_argument("--collection", required=True)
 
     return p
 
@@ -630,6 +744,7 @@ if __name__ == "__main__":
         "crawl":  cmd_crawl,
         "status": cmd_status,
         "sites":  cmd_list_sites,
+        "collections": cmd_collections,
     }
 
     if not args.command:

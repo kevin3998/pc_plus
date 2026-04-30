@@ -29,7 +29,7 @@ CHALLENGE_SIGNALS = [
     "security check",
     "unusual traffic",
     "verify you are human",
-    "verification",
+    "there was a problem providing the content you requested",
 ]
 
 ARTICLE_WAIT_SECONDS = 30
@@ -300,7 +300,7 @@ class BrowserEngine:
                   );
                   const noAccess = /access through your organization|check access to the full text|sign in to access|get access|purchase pdf/i.test(text);
                   const challenge = !hasBodyElement ||
-                    /are you a robot|captcha challenge|complete the security check|just a moment|checking your browser|human verification|press and hold|security check|unusual traffic|verify you are human|verification/i.test(text) ||
+                    /are you a robot|captcha challenge|complete the security check|just a moment|checking your browser|human verification|press and hold|security check|unusual traffic|verify you are human|there was a problem providing the content you requested/i.test(text) ||
                     /onlinelibrary\\.wiley\\.com/i.test(title) && text.length < 2000 && !hasBodySelector && !hasIntro && !hasSection;
                   return {
                     chars: text.length,
@@ -344,9 +344,14 @@ class BrowserEngine:
         try:
             text = self._page.locator("body").inner_text(timeout=3000).lower()
             title = self._page.title().lower()
-            return any(signal in text or signal in title for signal in CHALLENGE_SIGNALS)
+            return self._challenge_match(text, title)
         except Exception:
             return False
+
+    @staticmethod
+    def _challenge_match(text: str, title: str = "") -> bool:
+        haystack = f"{title or ''}\n{text or ''}".lower()
+        return any(signal in haystack for signal in CHALLENGE_SIGNALS)
 
     def _ensure_not_challenge_page(self, context: str = "页面"):
         while self._is_challenge_page():

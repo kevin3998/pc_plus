@@ -15,6 +15,7 @@ from pathlib import Path
 
 MANIFEST_FIELDS = [
     "index",
+    "topic_collection",
     "collection_slug",
     "source_collections",
     "duplicate_count",
@@ -28,6 +29,9 @@ MANIFEST_FIELDS = [
     "year",
     "url",
     "canonical_url",
+    "source_query",
+    "source_run_id",
+    "source_collection",
     "source_article_dir",
     "export_article_dir",
     "has_fulltext",
@@ -39,11 +43,14 @@ MANIFEST_FIELDS = [
 MISSING_FIELDS = [
     "index",
     "url",
+    "site",
     "collection_status",
     "reason",
     "article_id",
     "article_key",
     "article_dir",
+    "topic_collection",
+    "collection_slug",
 ]
 
 
@@ -190,6 +197,105 @@ def export_collections(
     )
 
 
+def export_topic_collection(
+    *,
+    db_path: Path,
+    base_dir: Path,
+    topic_slug: str,
+    out_dir: Path,
+    overwrite: bool = False,
+    dry_run: bool = False,
+) -> ExportResult:
+    db_path = Path(db_path)
+    base_dir = Path(base_dir)
+    out_dir = Path(out_dir)
+    rows = _topic_collection_rows(db_path, topic_slug)
+
+    manifest_rows: list[dict] = []
+    missing_rows: list[dict] = []
+    seen_exportable: dict[str, dict] = {}
+    exported = 0
+
+    for raw_index, row in enumerate(rows, 1):
+        source_dir = _source_article_dir(base_dir, row["article_dir"] or "")
+        reason = _missing_reason(row, source_dir)
+        if reason:
+            missing_rows.append(_missing_row(raw_index, row, reason, topic_slug=topic_slug))
+            continue
+
+        dedupe_key = _dedupe_key(row)
+        existing = seen_exportable.get(dedupe_key)
+        if existing:
+            existing["source_collections"].append(row["source_collection"] or topic_slug)
+            existing["duplicate_count"] += 1
+            continue
+
+        article_key = row["article_key"]
+        export_index = len(seen_exportable) + 1
+        export_dir = out_dir / "articles" / f"{export_index:03d}__{article_key}"
+        if export_dir.exists() and not overwrite:
+            missing_rows.append(_missing_row(raw_index, row, "existing_target", topic_slug=topic_slug))
+            continue
+
+        seen_exportable[dedupe_key] = {
+            "export_index": export_index,
+            "row": row,
+            "source_dir": source_dir,
+            "export_dir": export_dir,
+            "source_collections": [row["source_collection"] or topic_slug],
+            "duplicate_count": 1,
+        }
+
+    for item in seen_exportable.values():
+        row = item["row"]
+        source_dir = item["source_dir"]
+        export_dir = item["export_dir"]
+
+        manifest_rows.append(_manifest_row(
+            index=item["export_index"],
+            row=row,
+            source_dir=source_dir,
+            export_dir=export_dir,
+            site=row["site"] or "",
+            collection_slug=row["source_collection"] or "",
+            source_collections=item["source_collections"],
+            duplicate_count=item["duplicate_count"],
+            topic_collection=topic_slug,
+        ))
+
+        if not dry_run:
+            if export_dir.exists():
+                shutil.rmtree(export_dir)
+            export_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source_dir, export_dir)
+        exported += 1
+
+    if not dry_run:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        _write_csv(out_dir / "manifest.csv", MANIFEST_FIELDS, manifest_rows)
+        _write_jsonl(out_dir / "manifest.jsonl", manifest_rows)
+        _write_csv(out_dir / "missing.csv", MISSING_FIELDS, missing_rows)
+        _write_summary(out_dir / "export_summary.json", {
+            "topic": topic_slug,
+            "mode": "copy",
+            "dry_run": False,
+            "total_items": len(rows),
+            "exported": exported,
+            "missing": len(missing_rows),
+            "deduplicated": len(rows) - len(missing_rows) - len(manifest_rows),
+            "output_dir": str(out_dir),
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        })
+
+    return ExportResult(
+        total_items=len(rows),
+        exported=exported,
+        missing=len(missing_rows),
+        output_dir=out_dir,
+        dry_run=dry_run,
+    )
+
+
 def _collection_rows(db_path: Path, site: str, collection_slug: str) -> list[sqlite3.Row]:
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -232,6 +338,53 @@ def _collection_rows(db_path: Path, site: str, collection_slug: str) -> list[sql
         ).fetchall()
 
 
+def _topic_collection_rows(db_path: Path, topic_slug: str) -> list[sqlite3.Row]:
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        collection = conn.execute(
+            "select id from topic_collections where slug = ?",
+            (topic_slug,),
+        ).fetchone()
+        if not collection:
+            available = conn.execute(
+                "select slug from topic_collections order by updated_at desc limit 20"
+            ).fetchall()
+            choices = ", ".join(row["slug"] for row in available)
+            suffix = f" Available: {choices}" if choices else ""
+            raise ValueError(f"topic collection not found: {topic_slug}.{suffix}")
+
+        return conn.execute(
+            """
+            select
+              tci.id as collection_item_id,
+              tci.site,
+              tci.url,
+              tci.status as collection_status,
+              tci.title as search_title,
+              tci.year as search_year,
+              tci.source_run_id,
+              tci.source_query,
+              c.slug as source_collection,
+              a.id as article_id,
+              a.article_key,
+              a.doi,
+              a.pii,
+              a.canonical_url,
+              a.title,
+              a.journal,
+              a.year,
+              a.authors_json,
+              a.article_dir
+            from topic_collection_items tci
+            left join articles a on a.id = tci.article_id
+            left join collections c on c.id = tci.source_collection_id
+            where tci.collection_id = ?
+            order by tci.id
+            """,
+            (collection["id"],),
+        ).fetchall()
+
+
 def _source_article_dir(base_dir: Path, article_dir: str) -> Path:
     if not article_dir:
         return Path("")
@@ -259,15 +412,17 @@ def _dedupe_key(row: sqlite3.Row) -> str:
     return f"url:{row['url']}"
 
 
-def _missing_row(index: int, row: sqlite3.Row, reason: str, collection_slug: str = "") -> dict:
+def _missing_row(index: int, row: sqlite3.Row, reason: str, collection_slug: str = "", topic_slug: str = "") -> dict:
     return {
         "index": index,
         "url": row["url"] or "",
+        "site": _row_get(row, "site"),
         "collection_status": row["collection_status"] or "",
         "reason": reason,
         "article_id": row["article_id"] or "",
         "article_key": row["article_key"] or "",
         "article_dir": row["article_dir"] or "",
+        "topic_collection": topic_slug,
         "collection_slug": collection_slug,
     }
 
@@ -282,9 +437,11 @@ def _manifest_row(
     collection_slug: str,
     source_collections: list[str],
     duplicate_count: int,
+    topic_collection: str = "",
 ) -> dict:
     return {
         "index": index,
+        "topic_collection": topic_collection,
         "collection_slug": collection_slug,
         "source_collections": ";".join(dict.fromkeys(source_collections)),
         "duplicate_count": duplicate_count,
@@ -298,6 +455,9 @@ def _manifest_row(
         "year": row["year"] or row["search_year"] or "",
         "url": row["url"] or "",
         "canonical_url": row["canonical_url"] or row["url"] or "",
+        "source_query": _row_get(row, "source_query"),
+        "source_run_id": _row_get(row, "source_run_id"),
+        "source_collection": _row_get(row, "source_collection"),
         "source_article_dir": str(source_dir),
         "export_article_dir": str(export_dir),
         "has_fulltext": (source_dir / "parsed" / "fulltext.md").exists(),
@@ -305,6 +465,10 @@ def _manifest_row(
         "figure_count": _file_count(source_dir / "assets" / "figures"),
         "table_count": _file_count(source_dir / "assets" / "tables"),
     }
+
+
+def _row_get(row: sqlite3.Row, key: str, default: str = ""):
+    return row[key] if key in row.keys() and row[key] is not None else default
 
 
 def _file_count(path: Path) -> int:
@@ -333,23 +497,38 @@ def _write_summary(path: Path, data: dict):
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export a saved collection as copied article folders.")
-    parser.add_argument("--site", required=True, help="Site key, e.g. sciencedirect")
+    parser.add_argument("--site", help="Site key, e.g. sciencedirect")
     parser.add_argument(
         "--collection",
-        required=True,
         action="append",
         help="Collection slug under articles/{site}/searches. Repeat to merge collections.",
     )
+    parser.add_argument("--topic", help="Topic collection slug under data/collections")
     parser.add_argument("--out", required=True, type=Path, help="Output directory")
     parser.add_argument("--data-dir", type=Path, default=Path("data"), help="Project data directory")
     parser.add_argument("--overwrite", action="store_true", help="Replace existing exported article folders")
     parser.add_argument("--dry-run", action="store_true", help="Classify items without writing output")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.topic:
+        return args
+    if not args.site or not args.collection:
+        parser.error("--site and --collection are required unless --topic is used")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    result = export_collection(
+    if args.topic:
+        result = export_topic_collection(
+            db_path=args.data_dir / "catalog.sqlite",
+            base_dir=args.data_dir,
+            topic_slug=args.topic,
+            out_dir=args.out,
+            overwrite=args.overwrite,
+            dry_run=args.dry_run,
+        )
+    else:
+        result = export_collection(
         db_path=args.data_dir / "catalog.sqlite",
         base_dir=args.data_dir,
         site=args.site,
@@ -357,7 +536,7 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out,
         overwrite=args.overwrite,
         dry_run=args.dry_run,
-    ) if len(args.collection) == 1 else export_collections(
+        ) if len(args.collection) == 1 else export_collections(
         db_path=args.data_dir / "catalog.sqlite",
         base_dir=args.data_dir,
         site=args.site,
@@ -365,7 +544,7 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out,
         overwrite=args.overwrite,
         dry_run=args.dry_run,
-    )
+        )
     action = "would export" if result.dry_run else "exported"
     print(
         f"{action}: {result.exported} | missing: {result.missing} | "

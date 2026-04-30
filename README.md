@@ -67,6 +67,27 @@ data/runs/{run_id}/urls.txt
 data/articles/{site}/searches/{collection_slug}/
 ```
 
+如果希望把不同站点、不同批次、不同 query 的结果长期归入同一个研究主题，使用人工主题集合：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND desalination' \
+  --year-from 2021 \
+  --year-to 2025 \
+  --max 500 \
+  --collection nanofiltration-membrane \
+  --collection-title "Nanofiltration Membrane"
+```
+
+主题集合会写入：
+
+```text
+data/collections/nanofiltration-membrane/
+```
+
+真实文章仍只保存在各站点 `_library/` 中，主题集合只保存清单和链接。
+
 ### ScienceDirect
 
 ScienceDirect 需要登录态，建议先登录：
@@ -451,6 +472,13 @@ data/
           articles.jsonl
           articles.csv
           article_links/{article_key}
+  collections/
+    {topic_slug}/
+      collection.json
+      urls.txt
+      articles.jsonl
+      articles.csv
+      article_links/{site}__{article_key}
   runs/
     {run_id}/
       run.json
@@ -555,6 +583,52 @@ exported_collection/
 
 脚本只导出已有 `parsed/fulltext.md` 的成功文章；缺少全文、没有 `article_id` 或源目录缺失的记录会写入 `missing.csv`。多 collection 导出会按 `article_id` 去重，`manifest` 中的 `source_collections` 和 `duplicate_count` 会记录来源集合和重复次数。
 
+## 主题集合
+
+主题集合是跨站点、人工命名的长期文献管理入口，适合按研究方向组织文献，例如：
+
+```text
+data/collections/
+  nanofiltration-membrane/
+  tco-transparent-conductive-oxide/
+```
+
+常用命令：
+
+```bash
+python main.py collections list
+python main.py collections show --collection nanofiltration-membrane
+python main.py collections refresh --collection nanofiltration-membrane
+```
+
+把已有自动 search collection 导入主题集合：
+
+```bash
+python main.py collections import-search \
+  --site sciencedirect \
+  --search nanofiltration-membrane-or-hydrophobic-membrane-and-desalination_y2021-2025 \
+  --collection nanofiltration-membrane \
+  --collection-title "Nanofiltration Membrane"
+```
+
+从 URL 文件或单篇 crawl 时也可以指定主题集合：
+
+```bash
+python main.py crawl \
+  --file data/runs/{run_id}/urls.txt \
+  --collection nanofiltration-membrane
+```
+
+导出主题集合：
+
+```bash
+python scripts/export_collection.py \
+  --topic nanofiltration-membrane \
+  --out /Users/chenlintao/Desktop/nanofiltration_export
+```
+
+主题集合导出会跨站点去重，并在 `manifest.csv` / `manifest.jsonl` 中保留 `topic_collection`、`site`、`source_query`、`source_run_id` 和 `source_collection`。
+
 ## 搜索续跑状态
 
 `--resume-search` 依赖 SQLite 中的 `search_cursors` 表。游标按以下条件生成稳定 key：
@@ -572,6 +646,8 @@ exported_collection/
 ## 手动验证与中断
 
 如果遇到验证码、人机验证或需要重新登录，程序会在终端提示你到浏览器中完成验证，然后按 Enter 继续。
+
+ScienceDirect 的验证页检测只匹配明确的访问拦截、验证码、请求处理失败等提示，避免把正文里的普通 `verification` 字样误判成人机验证。如果终端反复提示验证，但浏览器页面看起来正常，优先检查页面是否已经跳到错误页、机构权限页或请求失败页。
 
 如果手动 Ctrl-C 中断：
 
@@ -614,4 +690,5 @@ python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
 - 失败文章归档在 `_failed/`，不阻止后续补爬。
 - PDF 和补充材料下载逻辑已移除，避免请求过多和权限问题。
 - ScienceDirect、Nature、Wiley 支持 `--resume-search` 续搜，适合将大检索拆成多批获取。
+- 主题集合 `data/collections/{slug}/` 是长期管理入口；`data/runs/` 只是任务记录，可以定期清理前先确认需要的结果已导入主题集合。
 - 站点权限取决于账号、机构网络和当前 IP 环境。

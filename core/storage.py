@@ -59,11 +59,13 @@ class StorageManager:
         self.run_id = run_id
         self.db_path = self.base / "catalog.sqlite"
         self.articles_root = self.base / "articles"
+        self.collections_root = self.base / "collections"
         self.runs_root = self.base / "runs"
         self._dir_article_ids: dict[str, int] = {}
 
         self.base.mkdir(parents=True, exist_ok=True)
         self.articles_root.mkdir(parents=True, exist_ok=True)
+        self.collections_root.mkdir(parents=True, exist_ok=True)
         self.runs_root.mkdir(parents=True, exist_ok=True)
         self.library_root(site).mkdir(parents=True, exist_ok=True)
         self.failed_root(site).mkdir(parents=True, exist_ok=True)
@@ -203,6 +205,43 @@ class StorageManager:
                     last_run_id text,
                     updated_at text not null,
                     unique(site, search_key)
+                );
+
+                create table if not exists topic_collections (
+                    id integer primary key autoincrement,
+                    slug text not null unique,
+                    title text,
+                    description text,
+                    created_at text not null,
+                    updated_at text not null
+                );
+
+                create table if not exists topic_collection_items (
+                    id integer primary key autoincrement,
+                    collection_id integer not null,
+                    site text not null,
+                    url text not null,
+                    article_id integer,
+                    title text,
+                    year text,
+                    source_run_id text,
+                    source_collection_id integer,
+                    source_query text,
+                    status text not null,
+                    added_at text not null,
+                    updated_at text not null,
+                    unique(collection_id, site, url),
+                    foreign key(collection_id) references topic_collections(id),
+                    foreign key(article_id) references articles(id),
+                    foreign key(source_collection_id) references collections(id)
+                );
+
+                create table if not exists topic_collection_runs (
+                    collection_id integer not null,
+                    run_id text not null,
+                    unique(collection_id, run_id),
+                    foreign key(collection_id) references topic_collections(id),
+                    foreign key(run_id) references runs(id)
                 );
                 """
             )
@@ -518,6 +557,384 @@ class StorageManager:
                 "delete from search_cursors where site = ? and search_key = ?",
                 (site, search_key),
             )
+
+    # ─────────────────────────────────────────────
+    #  Topic collections
+    # ─────────────────────────────────────────────
+    def topic_collection_slug(self, value: str) -> str:
+        return _text_slug(value, "topic-collection")
+
+    def create_or_get_topic_collection(
+        self,
+        slug: str,
+        title: str = "",
+        description: str = "",
+    ) -> int:
+        topic_slug = self.topic_collection_slug(slug)
+        now = _now()
+        with self._connect() as conn:
+            existing = conn.execute(
+                "select * from topic_collections where slug = ?",
+                (topic_slug,),
+            ).fetchone()
+            if existing:
+                if title or description:
+                    conn.execute(
+                        """
+                        update topic_collections set
+                            title = coalesce(nullif(?, ''), title),
+                            description = coalesce(nullif(?, ''), description),
+                            updated_at = ?
+                        where id = ?
+                        """,
+                        (title, description, now, existing["id"]),
+                    )
+                topic_id = existing["id"]
+            else:
+                conn.execute(
+                    """
+                    insert into topic_collections(slug, title, description, created_at, updated_at)
+                    values (?, ?, ?, ?, ?)
+                    """,
+                    (topic_slug, title or topic_slug, description, now, now),
+                )
+                topic_id = conn.execute(
+                    "select id from topic_collections where slug = ?",
+                    (topic_slug,),
+                ).fetchone()["id"]
+        self.topic_collection_dir(topic_id)
+        self.refresh_topic_collection_exports(topic_id)
+        return topic_id
+
+    def topic_collection_dir(self, collection_id_or_slug) -> Path:
+        if isinstance(collection_id_or_slug, int):
+            with self._connect() as conn:
+                row = conn.execute(
+                    "select slug from topic_collections where id = ?",
+                    (collection_id_or_slug,),
+                ).fetchone()
+            if not row:
+                raise KeyError(f"unknown topic collection: {collection_id_or_slug}")
+            slug = row["slug"]
+        else:
+            slug = self.topic_collection_slug(str(collection_id_or_slug))
+        d = self.collections_root / slug
+        (d / "article_links").mkdir(parents=True, exist_ok=True)
+        return d
+
+    def list_topic_collections(self) -> list[sqlite3.Row]:
+        with self._connect() as conn:
+            return conn.execute(
+                """
+                select tc.*,
+                       count(tci.id) as item_count,
+                       sum(case when tci.article_id is not null then 1 else 0 end) as article_count
+                from topic_collections tc
+                left join topic_collection_items tci on tci.collection_id = tc.id
+                group by tc.id
+                order by tc.updated_at desc, tc.slug
+                """
+            ).fetchall()
+
+    def topic_collection_info(self, slug: str) -> sqlite3.Row | None:
+        topic_slug = self.topic_collection_slug(slug)
+        with self._connect() as conn:
+            return conn.execute(
+                """
+                select tc.*,
+                       count(tci.id) as item_count,
+                       sum(case when tci.article_id is not null then 1 else 0 end) as article_count
+                from topic_collections tc
+                left join topic_collection_items tci on tci.collection_id = tc.id
+                where tc.slug = ?
+                group by tc.id
+                """,
+                (topic_slug,),
+            ).fetchone()
+
+    def attach_run_to_topic_collection(self, run_id: str, topic_collection_id: int):
+        with self._connect() as conn:
+            conn.execute(
+                """
+                insert into topic_collection_runs(collection_id, run_id)
+                values (?, ?)
+                on conflict(collection_id, run_id) do nothing
+                """,
+                (topic_collection_id, run_id),
+            )
+            run = conn.execute("select * from runs where id = ?", (run_id,)).fetchone()
+            topic = conn.execute("select * from topic_collections where id = ?", (topic_collection_id,)).fetchone()
+            if run and topic:
+                opts = json.loads(run["options_json"] or "{}")
+                opts["topic_collection_id"] = topic_collection_id
+                opts["topic_collection_slug"] = topic["slug"]
+                conn.execute("update runs set options_json = ? where id = ?", (_json(opts), run_id))
+                row = conn.execute("select * from runs where id = ?", (run_id,)).fetchone()
+            else:
+                row = None
+        if row:
+            _write_json(self.run_dir(run_id) / "run.json", _run_row_to_dict(row))
+        self.refresh_topic_collection_exports(topic_collection_id)
+
+    def topic_collection_for_run(self, run_id: str) -> int | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "select collection_id from topic_collection_runs where run_id = ? order by collection_id limit 1",
+                (run_id,),
+            ).fetchone()
+            if row:
+                return row["collection_id"]
+            run = conn.execute("select options_json from runs where id = ?", (run_id,)).fetchone()
+        if not run:
+            return None
+        opts = json.loads(run["options_json"] or "{}")
+        return opts.get("topic_collection_id")
+
+    def add_topic_collection_search_results(
+        self,
+        collection_id: int,
+        site: str,
+        results: list,
+        source_run_id: str = "",
+        source_collection_id: int | None = None,
+        source_query: str = "",
+    ):
+        now = _now()
+        with self._connect() as conn:
+            for result in results:
+                url = getattr(result, "url", "")
+                if not url:
+                    continue
+                conn.execute(
+                    """
+                    insert into topic_collection_items(
+                        collection_id, site, url, title, year, source_run_id,
+                        source_collection_id, source_query, status, added_at, updated_at
+                    )
+                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    on conflict(collection_id, site, url) do update set
+                        title = coalesce(nullif(excluded.title, ''), topic_collection_items.title),
+                        year = coalesce(nullif(excluded.year, ''), topic_collection_items.year),
+                        source_run_id = coalesce(nullif(excluded.source_run_id, ''), topic_collection_items.source_run_id),
+                        source_collection_id = coalesce(excluded.source_collection_id, topic_collection_items.source_collection_id),
+                        source_query = coalesce(nullif(excluded.source_query, ''), topic_collection_items.source_query),
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        collection_id,
+                        site,
+                        url,
+                        getattr(result, "title", ""),
+                        getattr(result, "year", ""),
+                        source_run_id,
+                        source_collection_id,
+                        source_query,
+                        STATUS_PENDING,
+                        now,
+                        now,
+                    ),
+                )
+        self.refresh_topic_collection_exports(collection_id)
+
+    def add_article_to_topic_collection(
+        self,
+        collection_id: int,
+        site: str,
+        article_id: int | None,
+        url: str,
+        title: str = "",
+        year: str = "",
+        status: str = STATUS_DONE,
+        source_run_id: str = "",
+        source_collection_id: int | None = None,
+        source_query: str = "",
+    ):
+        if not url and article_id:
+            with self._connect() as conn:
+                article = conn.execute("select canonical_url from articles where id = ?", (article_id,)).fetchone()
+            url = article["canonical_url"] if article else ""
+        if not url:
+            return
+        now = _now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                insert into topic_collection_items(
+                    collection_id, site, url, article_id, title, year, source_run_id,
+                    source_collection_id, source_query, status, added_at, updated_at
+                )
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                on conflict(collection_id, site, url) do update set
+                    article_id = coalesce(excluded.article_id, topic_collection_items.article_id),
+                    title = coalesce(nullif(excluded.title, ''), topic_collection_items.title),
+                    year = coalesce(nullif(excluded.year, ''), topic_collection_items.year),
+                    source_run_id = coalesce(nullif(excluded.source_run_id, ''), topic_collection_items.source_run_id),
+                    source_collection_id = coalesce(excluded.source_collection_id, topic_collection_items.source_collection_id),
+                    source_query = coalesce(nullif(excluded.source_query, ''), topic_collection_items.source_query),
+                    status = excluded.status,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    collection_id,
+                    site,
+                    url,
+                    article_id,
+                    title,
+                    year,
+                    source_run_id,
+                    source_collection_id,
+                    source_query,
+                    status,
+                    now,
+                    now,
+                ),
+            )
+        self.refresh_topic_collection_exports(collection_id)
+
+    def import_search_collection_to_topic(
+        self,
+        topic_slug: str,
+        site: str,
+        search_slug: str,
+        topic_title: str = "",
+        topic_description: str = "",
+    ) -> int:
+        topic_id = self.create_or_get_topic_collection(topic_slug, topic_title, topic_description)
+        with self._connect() as conn:
+            collection = conn.execute(
+                "select * from collections where site = ? and slug = ?",
+                (site, search_slug),
+            ).fetchone()
+            if not collection:
+                raise KeyError(f"unknown search collection: {site}:{search_slug}")
+            rows = conn.execute(
+                """
+                select ci.*, a.id as article_id, a.canonical_url, a.title as article_title, a.year as article_year
+                from collection_items ci
+                left join articles a on a.id = ci.article_id
+                where ci.collection_id = ?
+                order by ci.id
+                """,
+                (collection["id"],),
+            ).fetchall()
+        for row in rows:
+            self.add_article_to_topic_collection(
+                topic_id,
+                site,
+                row["article_id"],
+                url=row["canonical_url"] or row["url"],
+                title=row["article_title"] or row["title"] or "",
+                year=row["article_year"] or row["year"] or "",
+                status=row["status"] or STATUS_PENDING,
+                source_collection_id=collection["id"],
+                source_query=collection["query"] or "",
+            )
+        self.refresh_topic_collection_exports(topic_id)
+        return topic_id
+
+    def refresh_topic_collection_exports(self, collection_id: int):
+        with self._connect() as conn:
+            collection = conn.execute("select * from topic_collections where id = ?", (collection_id,)).fetchone()
+            if not collection:
+                raise KeyError(f"unknown topic collection: {collection_id}")
+            run_rows = conn.execute(
+                "select run_id from topic_collection_runs where collection_id = ? order by run_id",
+                (collection_id,),
+            ).fetchall()
+            rows = conn.execute(
+                """
+                select tci.*, a.site as article_site, a.article_key, a.doi, a.pii, a.canonical_url,
+                       a.title as article_title, a.journal, a.year as article_year,
+                       a.authors_json, a.article_dir,
+                       c.slug as source_collection_slug
+                from topic_collection_items tci
+                left join articles a on a.id = tci.article_id
+                left join collections c on c.id = tci.source_collection_id
+                where tci.collection_id = ?
+                order by tci.id
+                """,
+                (collection_id,),
+            ).fetchall()
+
+        collection_dir = self.topic_collection_dir(collection_id)
+        run_ids = [row["run_id"] for row in run_rows]
+        _write_json(collection_dir / "collection.json", {
+            "id": collection["id"],
+            "slug": collection["slug"],
+            "title": collection["title"] or collection["slug"],
+            "description": collection["description"] or "",
+            "run_ids": run_ids,
+            "article_count": len(rows),
+            "updated_at": _now(),
+        })
+        _write_text(collection_dir / "urls.txt", "\n".join(row["url"] for row in rows))
+        export_rows = [self._topic_collection_export_row(row, collection["slug"], run_ids) for row in rows]
+        _write_text(
+            collection_dir / "articles.jsonl",
+            "\n".join(_json(row) for row in export_rows) + ("\n" if export_rows else ""),
+        )
+        self._write_topic_collection_csv(collection_dir / "articles.csv", export_rows)
+        self._refresh_topic_collection_links(collection_dir, rows)
+
+    def _topic_collection_export_row(self, row: sqlite3.Row, topic_slug: str, run_ids: list[str]) -> dict:
+        return {
+            "topic_collection": topic_slug,
+            "site": row["article_site"] or row["site"] or "",
+            "title": row["article_title"] or row["title"] or "",
+            "doi": row["doi"] or "",
+            "pii": row["pii"] or "",
+            "journal": row["journal"] or "",
+            "year": row["article_year"] or row["year"] or "",
+            "canonical_url": row["canonical_url"] or row["url"] or "",
+            "article_key": row["article_key"] or "",
+            "article_dir": row["article_dir"] or "",
+            "run_ids": run_ids,
+            "source_run_id": row["source_run_id"] or "",
+            "source_query": row["source_query"] or "",
+            "source_collection": row["source_collection_slug"] or "",
+            "status": row["status"] or "",
+        }
+
+    def _write_topic_collection_csv(self, path: Path, rows: list[dict]):
+        fields = [
+            "topic_collection", "site", "title", "doi", "pii", "journal", "year",
+            "canonical_url", "article_key", "article_dir", "source_run_id",
+            "source_query", "source_collection", "run_ids", "status",
+        ]
+        buf = StringIO()
+        writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            csv_row = dict(row)
+            csv_row["run_ids"] = ";".join(row.get("run_ids", []))
+            writer.writerow(csv_row)
+        _write_text(path, buf.getvalue())
+
+    def _refresh_topic_collection_links(self, collection_dir: Path, rows: list[sqlite3.Row]):
+        links_dir = collection_dir / "article_links"
+        links_dir.mkdir(parents=True, exist_ok=True)
+        for row in rows:
+            article_dir = row["article_dir"]
+            article_key = row["article_key"]
+            site = row["article_site"] or row["site"]
+            if not article_dir or not article_key:
+                continue
+            link_path = links_dir / f"{site}__{article_key}"
+            target = self.base / article_dir
+            if link_path.exists():
+                continue
+            if link_path.is_symlink():
+                link_path.unlink()
+            try:
+                rel_target = Path("../../../") / article_dir
+                link_path.symlink_to(rel_target, target_is_directory=True)
+            except OSError:
+                _write_json(links_dir / f"{site}__{article_key}.link.json", {
+                    "site": site,
+                    "article_key": article_key,
+                    "article_dir": article_dir,
+                    "absolute_path": str(target),
+                })
 
     # ─────────────────────────────────────────────
     #  Collections
