@@ -1,14 +1,16 @@
 def test_registry_exposes_supported_adapters_and_detects_urls():
     from sites.registry import detect_adapter, get_adapter, supported_sites
 
-    assert supported_sites() == ["sciencedirect", "springer", "nature"]
+    assert supported_sites() == ["sciencedirect", "springer", "nature", "wiley"]
     assert get_adapter("sciencedirect").name == "ScienceDirect (Elsevier)"
     assert get_adapter("springer").name == "SpringerLink"
     assert get_adapter("nature").supports_search is True
+    assert get_adapter("wiley").name == "Wiley Online Library"
 
     assert detect_adapter("https://www.sciencedirect.com/science/article/pii/S123").key == "sciencedirect"
     assert detect_adapter("https://link.springer.com/article/10.1007/s10854-025-12345").key == "springer"
     assert detect_adapter("https://www.nature.com/articles/s41586-025-00001").key == "nature"
+    assert detect_adapter("https://onlinelibrary.wiley.com/doi/full/10.1002/adma.202500001").key == "wiley"
 
 
 def test_registry_rejects_unknown_site_and_url():
@@ -187,4 +189,137 @@ def test_nature_adapter_normalizes_article_urls():
     adapter = get_adapter("nature")
     assert adapter.normalize_url("https://www.nature.com/articles/s41586-025-00001?proof=t") == (
         "https://www.nature.com/articles/s41586-025-00001"
+    )
+
+
+def test_nature_search_falls_back_to_page_parameter_when_next_click_fails():
+    from urllib.parse import parse_qs, urlparse
+
+    from sites.registry import get_adapter
+
+    class FakeEngine:
+        def __init__(self):
+            self.gotos = []
+            self.current_html = ""
+
+        def goto(self, url):
+            self.gotos.append(url)
+            page = int(parse_qs(urlparse(url).query).get("page", ["1"])[0])
+            count = 50 if page < 3 else 10
+            start = (page - 1) * 50 + 1
+            self.current_html = "<html><body>" + "".join(
+                f"""
+                <article>
+                  <a href="/articles/s41586-025-{i:05d}">Nature Article {i}</a>
+                  <time datetime="2025-01-01">2025</time>
+                </article>
+                """
+                for i in range(start, start + count)
+            ) + "</body></html>"
+            return self.current_html
+
+        def html(self):
+            return self.current_html
+
+        def scroll_to_bottom(self):
+            return None
+
+        def click_next(self, _selectors):
+            return False
+
+    adapter = get_adapter("nature")
+    engine = FakeEngine()
+    results = adapter.search(engine=engine, query="membrane", year_from=2021, year_to=2025, max_results=110)
+
+    assert len(results) == 110
+    assert [parse_qs(urlparse(url).query).get("page", ["1"])[0] for url in engine.gotos] == [
+        "1",
+        "2",
+        "3",
+    ]
+
+
+def test_nature_search_can_resume_from_offset_with_journal_filter():
+    from urllib.parse import parse_qs, urlparse
+
+    from sites.base import SearchFilters
+    from sites.registry import get_adapter
+
+    class FakeEngine:
+        def __init__(self):
+            self.gotos = []
+            self.current_html = ""
+
+        def goto(self, url):
+            self.gotos.append(url)
+            parsed = urlparse(url)
+            page = int(parse_qs(parsed.query).get("page", ["1"])[0])
+            start = (page - 1) * 50 + 1
+            self.current_html = "<html><body>" + "".join(
+                f"""
+                <article>
+                  <a href="/articles/s41467-025-{i:05d}">Nature Communications Article {i}</a>
+                  <time datetime="2025-01-01">2025</time>
+                </article>
+                """
+                for i in range(start, start + 50)
+            ) + "</body></html>"
+            return self.current_html
+
+        def html(self):
+            return self.current_html
+
+        def scroll_to_bottom(self):
+            return None
+
+        def click_next(self, _selectors):
+            return False
+
+    adapter = get_adapter("nature")
+    engine = FakeEngine()
+    results = adapter.search(
+        engine=engine,
+        query="membrane",
+        year_from=2021,
+        year_to=2025,
+        max_results=50,
+        filters=SearchFilters(start_offset=100, journals=["nc"]),
+    )
+
+    first_query = parse_qs(urlparse(engine.gotos[0]).query)
+    assert first_query["page"] == ["3"]
+    assert first_query["journal"] == ["ncomms"]
+    assert len(results) == 50
+    assert results[0].url == "https://www.nature.com/articles/s41467-025-00101"
+    assert adapter.last_search_next_offset == 150
+    assert adapter.last_search_page_size == 50
+
+
+def test_wiley_adapter_extracts_results_and_filters_non_articles():
+    from sites.registry import get_adapter
+
+    adapter = get_adapter("wiley")
+    html = """
+    <html><body>
+      <li class="search__item">
+        <h3><a href="/doi/full/10.1002/adma.202500001">Advanced material article</a></h3>
+        <span>2025</span>
+      </li>
+      <li class="search__item">
+        <h3><a href="/doi/pdf/10.1002/adma.202500001">PDF</a></h3>
+      </li>
+      <li class="search__item">
+        <h3><a href="/doi/full/10.1002/adma.202500002">Back Cover</a></h3>
+      </li>
+    </body></html>
+    """
+
+    results = adapter.extract_results(html)
+
+    assert [result.url for result in results] == [
+        "https://onlinelibrary.wiley.com/doi/full/10.1002/adma.202500001"
+    ]
+    assert results[0].title == "Advanced material article"
+    assert adapter.normalize_url("https://onlinelibrary.wiley.com/doi/abs/10.1002/adfm.202500003") == (
+        "https://onlinelibrary.wiley.com/doi/full/10.1002/adfm.202500003"
     )

@@ -1,6 +1,6 @@
 # PC Plus Codex 文献爬取工具
 
-面向 ScienceDirect、SpringerLink、Nature 等站点的文献检索与文章资产保存工具。当前采用浏览器登录态 + SQLite 索引 + 文件资产库的保存方式，适合按检索条件长期归档文献、正文、图片、表格和元数据。
+面向 ScienceDirect、SpringerLink、Nature、Wiley Online Library 等站点的文献检索与文章资产保存工具。当前采用浏览器登录态 + SQLite 索引 + 文件资产库的保存方式，适合按检索条件长期归档文献、正文、图片、表格和元数据。
 
 ## 当前支持能力
 
@@ -17,6 +17,7 @@ python main.py sites
 - `sciencedirect`：支持登录、检索、爬取、正文解析、图片/表格保存。
 - `springer`：支持站点适配、检索和爬取基础流程。
 - `nature`：支持 Nature Portfolio 搜索、正文完整性判断、图片候选提取，并可按 Nature Communications / npj 子刊过滤。
+- `wiley`：支持 Wiley Online Library 检索、offset 续搜、正文完整性判断和图片候选提取。
 
 ### CLI 子命令
 
@@ -52,29 +53,31 @@ patchright install chromium
 
 ## 标准使用流程
 
-### 1. 登录站点
+### 通用流程
 
-ScienceDirect 示例：
+1. 如站点需要登录，先运行 `login` 并在 Chrome 中完成登录、机构认证或验证码。
+2. 运行 `search` 生成 URL 列表和检索集合。
+3. 运行 `crawl` 保存 HTML、正文、图片、表格和元数据。
+4. 用 `status` 查看 run 进度。
+
+检索完成后会输出 run id，并生成：
+
+```text
+data/runs/{run_id}/urls.txt
+data/articles/{site}/searches/{collection_slug}/
+```
+
+### ScienceDirect
+
+ScienceDirect 需要登录态，建议先登录：
 
 ```bash
 python main.py login --site sciencedirect
 ```
 
-命令会打开 Chrome。你需要在浏览器里完成登录、机构认证或验证码，然后回到终端按 Enter。
+登录状态保存到 `browser_profiles/sciencedirect/`。ScienceDirect 容易触发风控，检索默认使用 `offset` 翻页，并在翻页之间加入保守随机等待。每页按 25 条推进。
 
-登录状态会保存到：
-
-```text
-browser_profiles/sciencedirect/
-```
-
-Springer 示例：
-
-```bash
-python main.py login --site springer
-```
-
-### 2. 检索文章
+基础检索：
 
 ```bash
 python main.py search \
@@ -82,8 +85,61 @@ python main.py search \
   --query "transparent conductive oxide" \
   --year-from 2023 \
   --year-to 2024 \
-  --max 20
+  --max 100
 ```
+
+分批检索时，第一次先跑前 500 条：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500
+```
+
+下一次直接从上次保存的 offset 继续：
+
+```bash
+python main.py search \
+  --site sciencedirect \
+  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
+  --year-from 2025 \
+  --year-to 2025 \
+  --max 500 \
+  --resume-search
+```
+
+手动指定起点或重置游标：
+
+```bash
+python main.py search --site sciencedirect --query "transparent conductive oxide" --year-from 2023 --year-to 2024 --max 500 --start-offset 500
+python main.py search --site sciencedirect --query "transparent conductive oxide" --year-from 2023 --year-to 2024 --max 500 --reset-search-cursor
+```
+
+建议 `--max` 使用 25 的倍数，例如 `500`、`1000`。如果不是 25 的倍数，程序会保守处理续搜 offset，避免漏掉当前页尚未返回的结果。
+
+### Nature
+
+Nature 一般可直接检索；如果遇到访问验证，也可以先登录：
+
+```bash
+python main.py login --site nature
+```
+
+普通 Nature Portfolio 检索：
+
+```bash
+python main.py search \
+  --site nature \
+  --query "water treatment membrane" \
+  --year-from 2021 \
+  --year-to 2025 \
+  --max 100
+```
+
+Nature Communications / npj 不是独立站点，当前通过 `nature` adapter 的 `--journal` 和 `--journal-family` 过滤实现。期刊别名和子刊族配置集中在 `sites/nature_journals.py`。
 
 Nature Communications 示例：
 
@@ -94,7 +150,7 @@ python main.py search \
   --journal nc \
   --year-from 2024 \
   --year-to 2026 \
-  --max 50
+  --max 100
 ```
 
 npj 子刊族示例：
@@ -109,74 +165,107 @@ python main.py search \
   --max 100
 ```
 
-NC / npj 不是独立站点，当前通过 `nature` adapter 的 `--journal` 和 `--journal-family` 过滤实现。期刊别名和子刊族配置集中在 `sites/nature_journals.py`，新增子刊时优先扩展这个文件。
-
-检索完成后会输出一个 run id，并生成 URL 文件：
-
-```text
-data/runs/{run_id}/urls.txt
-```
-
-同时会生成对应检索条件的长期分类目录：
-
-```text
-data/articles/sciencedirect/searches/{collection_slug}/
-```
-
-#### ScienceDirect 分批续搜
-
-ScienceDirect 搜索默认使用 `offset` 翻页，并在翻页之间加入保守随机等待，避免连续快速翻页。每页按 25 条推进。
-
-如果同一检索条件先跑一批，例如前 500 条：
+Nature 支持按页续搜，子刊过滤会进入续搜 key。不同 `--journal` / `--journal-family` 条件不会共用同一个续搜位置：
 
 ```bash
 python main.py search \
-  --site sciencedirect \
-  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
-  --year-from 2025 \
+  --site nature \
+  --query "water treatment membrane" \
+  --journal nc \
+  --year-from 2021 \
   --year-to 2025 \
-  --max 500
+  --max 100 \
+  --resume-search
 ```
 
-下一次可以直接从上次保存的 offset 继续，不需要重新扫前 500 条：
+也可以用 `--start-offset 100` 手动从第 101 条附近开始。Nature 每页约 50 条，非 50 倍数的 offset 会回退到所在页起点，避免漏页。
+
+### Wiley Online Library
+
+Wiley 高权限全文通常需要机构登录或统一认证，建议先登录：
+
+```bash
+python main.py login --site wiley
+```
+
+登录状态保存到 `browser_profiles/wiley/`，后续 `search` 和 `crawl` 会复用该 profile。爬取过程中如果再次遇到人机验证，程序会暂停，等你在 Chrome 中完成验证并回到终端按 Enter 后继续。
+
+基础检索：
 
 ```bash
 python main.py search \
-  --site sciencedirect \
-  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
-  --year-from 2025 \
-  --year-to 2025 \
+  --site wiley \
+  --query "perovskite solar cells" \
+  --year-from 2020 \
+  --year-to 2021 \
+  --max 100
+```
+
+Wiley 搜索使用稳定 URL 参数翻页，不依赖点击下一页，并复用 SQLite `search_cursors` 表保存续搜位置。Wiley 目前支持按首批期刊别名做本地 DOI code 过滤：
+
+```text
+am      Advanced Materials                 adma
+afm     Advanced Functional Materials      adfm
+aem     Advanced Energy Materials          aenm
+small   Small                              smll
+```
+
+Advanced Materials 示例：
+
+```bash
+python main.py search \
+  --site wiley \
+  --query "perovskite solar cells" \
+  --journal am \
+  --year-from 2020 \
+  --year-to 2021 \
+  --max 50
+```
+
+多个 Wiley 期刊：
+
+```bash
+python main.py search \
+  --site wiley \
+  --query "perovskite solar cells" \
+  --journal am \
+  --journal afm \
+  --journal aem \
+  --year-from 2020 \
+  --year-to 2021 \
+  --max 100
+```
+
+Wiley 续搜：
+
+```bash
+python main.py search \
+  --site wiley \
+  --query "perovskite solar cells" \
+  --year-from 2020 \
+  --year-to 2021 \
   --max 500 \
   --resume-search
 ```
 
-也可以手动指定起始 offset：
+也可以使用 `--start-offset 500` 手动指定起点，或使用 `--reset-search-cursor` 清除该检索条件的续搜位置。
+
+### SpringerLink
+
+Springer 当前支持基础检索和爬取流程，分页仍使用按钮翻页，不启用 `search_cursors` 续搜：
 
 ```bash
+python main.py login --site springer
+
 python main.py search \
-  --site sciencedirect \
-  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
-  --year-from 2025 \
+  --site springer \
+  --query "transparent conductive oxide" \
+  --year-from 2023 \
   --year-to 2025 \
-  --max 500 \
-  --start-offset 500
+  --max 100
 ```
 
-如需重新从第一页开始，并清除该检索条件的续搜位置：
-
-```bash
-python main.py search \
-  --site sciencedirect \
-  --query '("nanofiltration membrane" OR "hydrophobic membrane") AND (desalination OR "water treatment" OR filtration)' \
-  --year-from 2025 \
-  --year-to 2025 \
-  --max 500 \
-  --reset-search-cursor
-```
-
-建议 `--max` 使用 25 的倍数，例如 `500`、`1000`。如果不是 25 的倍数，程序会保守处理续搜 offset，避免漏掉当前页尚未返回的结果。
-
-### 3. 爬取检索结果
+### 爬取检索结果
 
 使用上一步生成的 `urls.txt`：
 
@@ -204,7 +293,7 @@ python main.py search \
   --crawl
 ```
 
-### 4. 爬取单篇文章
+### 爬取单篇文章
 
 自动识别站点：
 
@@ -220,7 +309,7 @@ python main.py crawl \
   --url "https://www.sciencedirect.com/science/article/pii/S2214860424004342"
 ```
 
-### 5. 查看进度
+### 查看进度
 
 查看最近一次 run：
 
@@ -295,6 +384,41 @@ python main.py crawl \
 ```bash
 sqlite3 data/catalog.sqlite \
   "select type,status,error,source_url,label from assets where status='failed' order by id desc limit 20;"
+```
+
+### Wiley 正文与高清图片验证
+
+建议先用单篇验证登录状态、正文和图片，不要直接跑大批量：
+
+```bash
+python main.py crawl \
+  --site wiley \
+  --url "https://onlinelibrary.wiley.com/doi/full/10.1002/aenm.202100818" \
+  --max-figure-candidates-per-figure 8 \
+  --min-image-bytes 1000
+```
+
+只验证正文时可关闭图表：
+
+```bash
+python main.py crawl \
+  --site wiley \
+  --url "PASTE_WILEY_ARTICLE_URL" \
+  --no-figures \
+  --no-tables
+```
+
+检查点：
+
+- `parsed/fulltext.md` 应包含真实正文，不应只是 Abstract、References 或访问提示。
+- `assets/figures/` 中应为正文图，不应是 logo、banner、cover 或 placeholder。
+- SQLite 中成功图片的 `source_url` 优先应为无 `-m` 的 Wiley `cms/asset` 高清候选；如果最终保存 `-m`，通常表示高清候选被 Wiley 拒绝。
+
+查看最近图片下载情况：
+
+```bash
+sqlite3 data/catalog.sqlite \
+  "select status,error,source_url,label,size_bytes from assets where type='figure' order by id desc limit 40;"
 ```
 
 ## 保存结构说明
@@ -433,7 +557,7 @@ exported_collection/
 
 ## 搜索续跑状态
 
-ScienceDirect 的 `--resume-search` 依赖 SQLite 中的 `search_cursors` 表。游标按以下条件生成稳定 key：
+`--resume-search` 依赖 SQLite 中的 `search_cursors` 表。游标按以下条件生成稳定 key：
 
 - site
 - query
@@ -443,7 +567,7 @@ ScienceDirect 的 `--resume-search` 依赖 SQLite 中的 `search_cursors` 表。
 
 游标记录 `next_offset`、`page_size`、`last_run_id` 和是否已到末页。`--resume-search` 会读取 `next_offset`；`--start-offset` 会覆盖本次起点；`--reset-search-cursor` 会删除同一检索条件的游标。
 
-该功能目前只针对 `sciencedirect` 启用，Nature 和 Springer 仍使用原有按钮翻页流程。
+该功能目前针对 `sciencedirect`、`nature` 和 `wiley` 启用。Nature 的 cursor 会结合 `--journal` / `--journal-family`，不同子刊过滤条件不会共用同一个续搜位置。Springer 仍使用原有按钮翻页流程。
 
 ## 手动验证与中断
 
@@ -489,5 +613,5 @@ python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
 - 已存在成功文章默认会跳过重新下载，但仍会加入新的 search collection。
 - 失败文章归档在 `_failed/`，不阻止后续补爬。
 - PDF 和补充材料下载逻辑已移除，避免请求过多和权限问题。
-- ScienceDirect 支持 `--resume-search` 续搜，适合将大检索拆成多批获取。
+- ScienceDirect、Nature、Wiley 支持 `--resume-search` 续搜，适合将大检索拆成多批获取。
 - 站点权限取决于账号、机构网络和当前 IP 环境。

@@ -127,7 +127,7 @@ def cmd_search(args):
     filters = _search_filters_from_args(args)
     search_cursor_key = None
     search_cursor_options = _search_cursor_options(filters)
-    if site == "sciencedirect":
+    if _adapter_supports_search_cursor(adapter):
         search_cursor_key = storage.search_cursor_key(
             site=site,
             query=args.query,
@@ -137,17 +137,17 @@ def cmd_search(args):
         )
         if getattr(args, "reset_search_cursor", False):
             storage.reset_search_cursor(site, search_cursor_key)
-            log.info("已重置 ScienceDirect 搜索游标")
+            log.info("已重置 %s 搜索游标", adapter.name)
         if getattr(args, "start_offset", None) is not None:
             filters.start_offset = max(0, int(args.start_offset))
-            log.info("ScienceDirect 搜索从指定 offset=%s 开始", filters.start_offset)
+            log.info("%s 搜索从指定 offset=%s 开始", adapter.name, filters.start_offset)
         elif getattr(args, "resume_search", False):
             cursor = storage.get_search_cursor(site, search_cursor_key)
             if cursor:
                 filters.start_offset = max(0, int(cursor["next_offset"]))
-                log.info("ScienceDirect 续搜: 从 offset=%s 开始", filters.start_offset)
+                log.info("%s 续搜: 从 offset=%s 开始", adapter.name, filters.start_offset)
             else:
-                log.info("ScienceDirect 续搜: 未找到历史游标，从 offset=0 开始")
+                log.info("%s 续搜: 未找到历史游标，从 offset=0 开始", adapter.name)
     run_id = storage.create_run(
         site=site,
         query=args.query,
@@ -188,7 +188,7 @@ def cmd_search(args):
     finally:
         engine.stop()
 
-    if site == "sciencedirect" and search_cursor_key:
+    if _adapter_supports_search_cursor(adapter) and search_cursor_key:
         next_offset = int(getattr(adapter, "last_search_next_offset", filters.start_offset) or 0)
         finished = bool(getattr(adapter, "last_search_finished", False))
         page_size = int(getattr(adapter, "last_search_page_size", 25) or 25)
@@ -205,7 +205,7 @@ def cmd_search(args):
             finished=finished,
             last_run_id=run_id,
         )
-        log.info("ScienceDirect 搜索游标已更新: next_offset=%s finished=%s", next_offset, finished)
+        log.info("%s 搜索游标已更新: next_offset=%s finished=%s", adapter.name, next_offset, finished)
 
     return _handle_search_results(results, cm, args, storage, run_id)
 
@@ -515,6 +515,10 @@ def _search_cursor_options(filters: SearchFilters) -> dict:
     }
 
 
+def _adapter_supports_search_cursor(adapter) -> bool:
+    return bool(getattr(adapter, "supports_search_cursor", False))
+
+
 # ─────────────────────────────────────────────
 #  CLI 参数解析
 # ─────────────────────────────────────────────
@@ -549,11 +553,11 @@ def build_parser() -> argparse.ArgumentParser:
     s_search.add_argument("--inject-browser-cookies", action="store_true",
                           help="将 cookies.json 注入浏览器搜索 profile（默认不注入）")
     s_search.add_argument("--resume-search", action="store_true",
-                          help="ScienceDirect: 从同一检索条件上次保存的 offset 继续检索")
+                          help="支持续搜的站点: 从同一检索条件上次保存的 offset 继续检索")
     s_search.add_argument("--start-offset", type=int, default=None,
-                          help="ScienceDirect: 手动指定起始 offset，例如 500")
+                          help="支持续搜的站点: 手动指定起始 offset，例如 500")
     s_search.add_argument("--reset-search-cursor", action="store_true",
-                          help="ScienceDirect: 清除同一检索条件的续搜 offset 后再检索")
+                          help="支持续搜的站点: 清除同一检索条件的续搜 offset 后再检索")
     s_search.add_argument(
         "--journal",
         action="append",

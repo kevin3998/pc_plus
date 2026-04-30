@@ -6,11 +6,13 @@ from sites.base import SiteAdapter
 from sites.nature import NatureAdapter
 from sites.sciencedirect import ScienceDirectAdapter
 from sites.springer import SpringerAdapter
+from sites.wiley import WileyAdapter
 
 _ADAPTERS: dict[str, SiteAdapter] = {
     "sciencedirect": ScienceDirectAdapter(),
     "springer": SpringerAdapter(),
     "nature": NatureAdapter(),
+    "wiley": WileyAdapter(),
 }
 
 

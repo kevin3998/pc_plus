@@ -27,6 +27,7 @@ class ScienceDirectAdapter(SiteAdapter):
     login_url = "https://www.sciencedirect.com/search"
     article_domain = "www.sciencedirect.com"
     supports_search = True
+    supports_search_cursor = True
     requires_login = True
 
     result_selectors = (

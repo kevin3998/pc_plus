@@ -13,6 +13,7 @@ from sites.nature_journals import NatureJournal, resolve_journals
 
 log = logging.getLogger("sites.nature")
 
+NATURE_PAGE_SIZE = 50
 NATURE_FULLTEXT_MIN_CHARS = 1200
 NATURE_NO_ACCESS_SIGNALS = (
     "access through your institution",
@@ -48,6 +49,7 @@ class NatureAdapter(SiteAdapter):
     login_url = "https://www.nature.com"
     article_domain = "www.nature.com"
     supports_search = True
+    supports_search_cursor = True
 
     result_selectors = (
         "a[href^='/articles/'], "
@@ -59,6 +61,9 @@ class NatureAdapter(SiteAdapter):
         "a[aria-label='Next page']",
         "li.next a",
         "a.c-pagination__link[aria-label*='Next']",
+        "ul.c-pagination li[data-test='page-next'] a.c-pagination__link",
+        "ul.c-pagination li[data-page='next'] a.c-pagination__link",
+        "ul.c-pagination li.c-pagination__item:has(.c-pagination__link--active) + li a.c-pagination__link",
     ]
 
     def preferred_body_selectors(self) -> list[str]:
@@ -117,11 +122,22 @@ class NatureAdapter(SiteAdapter):
             filters.journals if filters else [],
             filters.journal_family if filters else "",
         )
-        url = self._search_url(query, year_from, year_to, selected_journals)
+        page_size = NATURE_PAGE_SIZE
+        requested_offset = max(0, int(getattr(filters, "start_offset", 0) or 0))
+        start_offset = requested_offset - (requested_offset % page_size)
+        if start_offset != requested_offset:
+            log.info("  [Nature/browser] offset=%s 非页大小倍数，回退到页起点 offset=%s", requested_offset, start_offset)
+
+        self.last_search_next_offset = start_offset
+        self.last_search_finished = False
+        self.last_search_page_size = page_size
+
+        page = start_offset // page_size + 1
+        current_offset = start_offset
+        url = self._search_url(query, year_from, year_to, selected_journals, page=page)
         html = engine.goto(url)
         results: list[SearchResult] = []
         seen: set[str] = set()
-        page = 1
 
         while len(results) < max_results:
             engine.scroll_to_bottom()
@@ -133,17 +149,32 @@ class NatureAdapter(SiteAdapter):
                 and self._year_in_range(result.year, year_from, year_to)
                 and self._result_matches_selected_journals(result, selected_journals)
             ]
+            if page_results:
+                self.last_search_next_offset = current_offset + page_size
             for result in page_results:
                 seen.add(result.url)
                 results.append(result)
                 if len(results) >= max_results:
                     break
 
-            log.info("  [Nature/browser] 第 %s 页 | 新增 %s 篇 | 共 %s 篇", page, len(page_results), len(results))
-            if len(results) >= max_results or not page_results:
+            log.info(
+                "  [Nature/browser] 第 %s 页 | offset=%s | 新增 %s 篇 | 共 %s 篇 | next_offset=%s",
+                page,
+                current_offset,
+                len(page_results),
+                len(results),
+                self.last_search_next_offset,
+            )
+            if not page_results:
+                self.last_search_finished = True
+            if len(results) >= max_results or self.last_search_finished:
                 break
             if not engine.click_next(self.next_selectors):
-                break
+                next_page = page + 1
+                next_url = self._search_url(query, year_from, year_to, selected_journals, page=next_page)
+                log.info("  [Nature/browser] 下一页按钮不可用，改用 page 参数翻页: %s", next_page)
+                html = engine.goto(next_url)
+            current_offset += page_size
             page += 1
 
         return results[:max_results]
@@ -154,11 +185,14 @@ class NatureAdapter(SiteAdapter):
         year_from: int,
         year_to: int,
         journals: list[NatureJournal],
+        page: int = 1,
     ) -> str:
         params: list[tuple[str, str]] = [
             ("q", query),
             ("date_range", f"{year_from}-{year_to}"),
         ]
+        if page > 1:
+            params.append(("page", str(page)))
         for journal in journals:
             params.append(("journal", journal.key))
         return f"{self.search_base}?{urlencode(params)}"

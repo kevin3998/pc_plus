@@ -29,7 +29,7 @@ def test_project_packages_import():
     from search.browser_search import BrowserJournalSearcher
     from utils.state import CrawlState
 
-    assert list(JOURNAL_CONFIGS) == ["sciencedirect", "springer", "nature"]
+    assert list(JOURNAL_CONFIGS) == ["sciencedirect", "springer", "nature", "wiley"]
     assert BrowserEngine
     assert CookieManager
     assert BinaryDownloadSession
@@ -56,6 +56,7 @@ def test_main_sites_lists_only_supported_mainline_site():
     assert "springer" in result.stdout
     assert "SpringerLink" in result.stdout
     assert "nature" in result.stdout
+    assert "wiley" in result.stdout
 
 
 def test_login_command_accepts_sciencedirect_site():

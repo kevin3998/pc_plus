@@ -20,10 +20,16 @@ log = logging.getLogger("browser")
 CHALLENGE_SIGNALS = [
     "are you a robot",
     "captcha challenge",
+    "complete the security check",
     "just a moment",
     "checking your browser",
     "enable javascript and cookies",
+    "human verification",
+    "press and hold",
+    "security check",
+    "unusual traffic",
     "verify you are human",
+    "verification",
 ]
 
 ARTICLE_WAIT_SECONDS = 30
@@ -114,6 +120,7 @@ class BrowserEngine:
 
     def open_article(self, url: str, timeout: int = 60000) -> str:
         html = self.goto(url, timeout=timeout)
+        self._ensure_not_challenge_page("文章页面")
         self._wait_for_article_content(url)
         return self.html() or html
 
@@ -203,26 +210,35 @@ class BrowserEngine:
         self._wait_for_stable(short=True)
 
     def _wait_for_article_content(self, url: str):
-        if not self._page or "sciencedirect.com" not in urlparse(url).netloc:
+        if not self._page:
+            return
+        host = urlparse(url).netloc.lower()
+        if "sciencedirect.com" not in host and "onlinelibrary.wiley.com" not in host:
             self.scroll_to_bottom()
             return
 
         deadline = time.time() + ARTICLE_WAIT_SECONDS
         last_status = {}
         while time.time() < deadline:
-            self._scroll_article_page()
+            self._ensure_not_challenge_page("文章页面")
             last_status = self._article_content_status()
+            if last_status.get("challenge"):
+                self._handle_challenge(context="文章页面")
+                continue
             if last_status.get("has_body") or last_status.get("no_access"):
                 break
+            self._scroll_article_page()
             time.sleep(ARTICLE_WAIT_POLL_SECONDS)
 
+        site_name = "Wiley" if "onlinelibrary.wiley.com" in host else "ScienceDirect"
         if last_status.get("has_body"):
-            log.info("ScienceDirect 正文已加载: chars=%s headings=%s", last_status.get("chars"), last_status.get("headings"))
+            log.info("%s 正文已加载: chars=%s headings=%s", site_name, last_status.get("chars"), last_status.get("headings"))
         elif last_status.get("no_access"):
-            log.info("ScienceDirect 页面显示可能无全文权限")
+            log.info("%s 页面显示可能无全文权限", site_name)
         else:
             log.warning(
-                "ScienceDirect 正文等待超时，继续交给解析层判定: chars=%s headings=%s",
+                "%s 正文等待超时，继续交给解析层判定: chars=%s headings=%s",
+                site_name,
                 last_status.get("chars"),
                 last_status.get("headings"),
             )
@@ -233,6 +249,10 @@ class BrowserEngine:
             """
             async () => {
               const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+              if (!document.body) {
+                await delay(500);
+                return;
+              }
               const steps = [0.25, 0.55, 0.85, 1.0];
               for (const step of steps) {
                 window.scrollTo(0, Math.max(0, document.body.scrollHeight * step - window.innerHeight));
@@ -251,8 +271,11 @@ class BrowserEngine:
             return self._page.evaluate(
                 """
                 () => {
-                  const text = (document.body && document.body.innerText || "").replace(/\\s+/g, " ");
-                  const headings = Array.from(document.querySelectorAll("article h2, article h3, article h4"))
+                  const body = document.body;
+                  const title = document.title || "";
+                  const text = (body && body.innerText || "").replace(/\\s+/g, " ");
+                  const hasBodyElement = !!body;
+                  const headings = Array.from(document.querySelectorAll("article h2, article h3, article h4, section.article-section h2, section.article-section h3, div.article__body h2, div.article__body h3"))
                     .map(el => (el.innerText || "").replace(/\\s+/g, " ").trim())
                     .filter(Boolean);
                   const ignored = new Set([
@@ -268,7 +291,7 @@ class BrowserEngine:
                       !/access through your organization|check access to the full text|sign in to access|get access|purchase pdf/i.test(lower);
                   });
                   const hasBodySelector = !!document.querySelector(
-                    "div.Body, div#body, div[class*='article-body'], div[class*='ArticleBody'], section[class*='body']"
+                    "div.Body, div#body, div[class*='article-body'], div[class*='ArticleBody'], section[class*='body'], div.article__body, section.article-section, div.article-section__content"
                   );
                   const hasIntro = headings.some(h => /(^|\\b)(\\d+\\.?\\s*)?introduction\\b/i.test(h));
                   const hasSection = contentHeadings.some(h =>
@@ -276,11 +299,15 @@ class BrowserEngine:
                     /\\bmaterials?\\s+and\\s+methods?\\b/i.test(h)
                   );
                   const noAccess = /access through your organization|check access to the full text|sign in to access|get access|purchase pdf/i.test(text);
+                  const challenge = !hasBodyElement ||
+                    /are you a robot|captcha challenge|complete the security check|just a moment|checking your browser|human verification|press and hold|security check|unusual traffic|verify you are human|verification/i.test(text) ||
+                    /onlinelibrary\\.wiley\\.com/i.test(title) && text.length < 2000 && !hasBodySelector && !hasIntro && !hasSection;
                   return {
                     chars: text.length,
                     headings: contentHeadings.length,
-                    has_body: hasBodySelector || hasIntro || hasSection || text.length > 12000,
+                    has_body: !challenge && (hasBodySelector || hasIntro || hasSection || text.length > 12000),
                     no_access: noAccess && !hasBodySelector && !hasIntro && !hasSection,
+                    challenge,
                   };
                 }
                 """
@@ -321,10 +348,14 @@ class BrowserEngine:
         except Exception:
             return False
 
-    def _handle_challenge(self):
+    def _ensure_not_challenge_page(self, context: str = "页面"):
+        while self._is_challenge_page():
+            self._handle_challenge(context=context)
+
+    def _handle_challenge(self, context: str = "页面"):
         print(
             "\n检测到验证码/人机验证页面。"
-            "请在弹出的 Chrome 窗口中完成验证，确认搜索结果页正常显示后回到终端按 Enter。"
+            f"请在弹出的 Chrome 窗口中完成验证，确认{context}正常显示后回到终端按 Enter。"
         )
         try:
             input("[完成后按 Enter 继续] > ")

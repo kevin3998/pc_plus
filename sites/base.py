@@ -32,6 +32,7 @@ class SiteAdapter:
     login_url = ""
     article_domain = ""
     supports_search = True
+    supports_search_cursor = False
     requires_login = False
 
     def normalize_url(self, url: str) -> str:
