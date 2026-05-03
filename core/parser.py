@@ -161,6 +161,30 @@ class ArticleParser:
         log.info(f"  ✓ 完成: {adir.name}")
         return True
 
+    def refresh_figures(self, url: str, html: str, options: dict | None = None, overwrite: bool = False) -> bool:
+        """Extract figures into an existing article directory without rewriting article text."""
+        opts = _content_options(options)
+        soup = BeautifulSoup(html, "lxml")
+        meta = self._extract_meta(soup, url)
+        doi = meta.get("doi") or ""
+
+        lookup_key = doi if doi and self.storage.article_exists(doi) else url
+        if not self.storage.article_exists(lookup_key):
+            log.warning("  ✗ 无法补图：文章尚未保存到 _library")
+            return False
+
+        adir = self.storage.article_dir(lookup_key)
+        if self.storage.figure_assets_exist(adir) and not overwrite:
+            log.info("  ↩ 已存在图片，跳过补图")
+            return True
+
+        if overwrite:
+            self.storage.clear_figure_assets(adir)
+
+        self._extract_figures(soup, adir, url, opts)
+        log.info("  ✓ 补图完成: %s", adir.name)
+        return True
+
     # ─────────────────────────────────────────────
     #  元数据提取
     # ─────────────────────────────────────────────

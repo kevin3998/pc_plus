@@ -432,6 +432,10 @@ def _do_browser_crawl(
     log.info(f"浏览器待处理: {len(pending)} / {len(urls)} 篇")
 
     opts = _content_options_from_args(args)
+    figures_only = bool(getattr(args, "figures_only", False))
+    overwrite_figures = bool(getattr(args, "overwrite_figures", False))
+    if figures_only:
+        opts["figures"] = True
 
     success = failed = skipped = 0
     engine = BrowserEngine(
@@ -444,6 +448,35 @@ def _do_browser_crawl(
         parser = ArticleParser(BinaryDownloadSession(cm), storage, adapter=adapter, browser=engine)
         for i, url in enumerate(pending, 1):
             log.info(f"\n[{i}/{len(pending)}] {url}")
+            if figures_only:
+                if not storage.article_exists(url):
+                    log.info("  ↩ 未找到已保存文章，无法补图")
+                    storage.mark_failed(run_id, url, "figures-only requires existing article")
+                    failed += 1
+                    continue
+                try:
+                    html = engine.open_article(url)
+                    ok = parser.refresh_figures(url, html, options=opts, overwrite=overwrite_figures)
+                    article_id = storage.find_article_id(url, site=site)
+                    if ok:
+                        storage.mark_done(run_id, url, article_id=article_id)
+                        storage.add_article_to_collection(collection_id, article_id, url=url)
+                        if topic_collection_id:
+                            storage.add_article_to_topic_collection(topic_collection_id, site, article_id, url=url, source_run_id=run_id, source_collection_id=collection_id)
+                        success += 1
+                    else:
+                        storage.mark_failed(run_id, url, "figure refresh returned false")
+                        failed += 1
+                except KeyboardInterrupt:
+                    log.info("\n用户中断，保存进度后退出...")
+                    storage.print_run_summary(run_id)
+                    storage.finish_run(run_id, status="failed")
+                    sys.exit(0)
+                except Exception as e:
+                    log.error(f"  ✗ 补图异常: {e}", exc_info=True)
+                    storage.mark_failed(run_id, url, str(e))
+                    failed += 1
+                continue
             if storage.article_exists(url):
                 log.info("  ↩ 已存在，跳过")
                 storage.mark_skipped(run_id, url)
@@ -680,6 +713,10 @@ def build_parser() -> argparse.ArgumentParser:
     s_crawl.add_argument("--browser", action="store_true", help="兼容参数；爬取始终使用 Patchright 浏览器")
     s_crawl.add_argument("--inject-browser-cookies", action="store_true",
                          help="将 cookies.json 注入浏览器 crawl profile（默认不注入）")
+    s_crawl.add_argument("--figures-only", action="store_true",
+                         help="只为已存在文章补充图片；不会重写正文、HTML 或表格")
+    s_crawl.add_argument("--overwrite-figures", action="store_true",
+                         help="配合 --figures-only 使用，先清理旧图片再重新下载")
     _add_content_flags(s_crawl)
 
     # status

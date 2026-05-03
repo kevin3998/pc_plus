@@ -42,12 +42,21 @@ python main.py sites
 
 ## 安装与准备
 
-建议在已有 Python 环境中安装依赖：
+建议固定使用 `pc_plus` conda 环境运行本项目，避免把依赖安装到 `base`：
 
 ```bash
+conda activate pc_plus
 python -m pip install -r requirements.txt
 patchright install chromium
 ```
+
+如果当前终端不想切换环境，也可以用 `conda run` 显式指定环境：
+
+```bash
+conda run -n pc_plus python main.py sites
+```
+
+后续 README 中的 `python main.py ...` 默认都表示已经先执行了 `conda activate pc_plus`。如果终端提示符仍显示 `(base)`，不要直接运行项目命令，先切换到 `(pc_plus)`。
 
 如果使用机构账号或需要权限访问全文，建议保持登录、检索和爬取在同一网络环境下完成，例如校园网、VPN 或机构远程访问环境。
 
@@ -300,6 +309,23 @@ python main.py crawl --file data/runs/{run_id}/urls.txt
 
 ```bash
 python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
+```
+
+后续如需为已经保存的文章补图，使用补图模式：
+
+```bash
+python main.py crawl \
+  --file data/runs/{run_id}/urls.txt \
+  --figures-only
+```
+
+补图模式只处理已经存在于 `_library` 的文章，不会重写 `meta.json`、`raw/article.html`、`parsed/fulltext.md` 或表格。已有图片默认跳过；如需清理旧图片后重新下载：
+
+```bash
+python main.py crawl \
+  --file data/runs/{run_id}/urls.txt \
+  --figures-only \
+  --overwrite-figures
 ```
 
 如果想检索后立即爬取：
@@ -681,12 +707,19 @@ python main.py status --run-id {run_id}
 python main.py crawl --file data/runs/{run_id}/urls.txt --no-figures
 ```
 
+之后小批量补图：
+
+```bash
+python main.py crawl --file data/runs/{run_id}/urls.txt --figures-only
+```
+
 ## 注意事项
 
 - `data/` 已加入 `.gitignore`，运行数据不会进入 Git。
 - `browser_profiles/` 保存登录态，包含浏览器缓存和账号状态，建议不要提交到 Git。
 - 同一篇文章出现在多个 search collection 时，只会在 `_library/` 保存一份真实资产。
 - 已存在成功文章默认会跳过重新下载，但仍会加入新的 search collection。
+- 需要先抓正文、后补图片时，先用 `--no-figures`，后续再用 `--figures-only`。
 - 失败文章归档在 `_failed/`，不阻止后续补爬。
 - PDF 和补充材料下载逻辑已移除，避免请求过多和权限问题。
 - ScienceDirect、Nature、Wiley 支持 `--resume-search` 续搜，适合将大检索拆成多批获取。

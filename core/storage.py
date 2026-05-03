@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import sqlite3
+import shutil
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -1296,6 +1297,30 @@ class StorageManager:
                     (selected_site, doi_or_url, key),
                 ).fetchone()
         return row is not None
+
+    def figure_assets_exist(self, adir: Path) -> bool:
+        figure_dir = adir / "assets" / "figures"
+        image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".tif", ".tiff", ".svg"}
+        return any(
+            path.is_file() and path.suffix.lower() in image_exts
+            for path in figure_dir.glob("*")
+        )
+
+    def clear_figure_assets(self, adir: Path):
+        figure_dir = adir / "assets" / "figures"
+        if figure_dir.exists():
+            for path in figure_dir.iterdir():
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
+        figure_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            article_id = self._article_id_for_dir(adir)
+        except RuntimeError:
+            return
+        with self._connect() as conn:
+            conn.execute("delete from assets where article_id = ? and type = 'figure'", (article_id,))
 
     def save_meta(self, adir: Path, meta: dict):
         meta = dict(meta)

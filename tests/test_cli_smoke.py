@@ -164,6 +164,21 @@ def test_crawl_accepts_browser_flag_for_compatibility():
     assert args.browser is True
 
 
+def test_crawl_accepts_figures_only_refresh_flags():
+    import main
+
+    parser = main.build_parser()
+    args = parser.parse_args([
+        "crawl",
+        "--file", "search_results.txt",
+        "--figures-only",
+        "--overwrite-figures",
+    ])
+
+    assert args.figures_only is True
+    assert args.overwrite_figures is True
+
+
 def test_crawl_accepts_optional_site_override():
     import main
 
@@ -242,6 +257,41 @@ def test_article_parser_respects_disabled_content_options(tmp_path, monkeypatch)
     assert (adir / "meta.json").exists()
     assert not (adir / "raw" / "article.html").exists()
     assert not (adir / "parsed" / "fulltext.md").exists()
+
+
+def test_article_parser_refreshes_figures_for_existing_article(tmp_path, monkeypatch):
+    from core.assets import AssetCandidate, AssetDownloadResult
+    from core.parser import ArticleParser
+    from core.storage import StorageManager
+
+    class FigureSession:
+        def download_binary(self, *args, **kwargs):
+            return AssetDownloadResult(
+                status="done",
+                url=args[0],
+                data=b"\xff\xd8" + b"x" * 2048,
+                content_type="image/jpeg",
+            )
+
+    storage = StorageManager(tmp_path)
+    adir = storage.article_dir("10.1016/j.refresh.2025.1")
+    storage.save_meta(adir, {
+        "url": "https://www.sciencedirect.com/science/article/pii/SREFRESH",
+        "doi": "10.1016/j.refresh.2025.1",
+        "title": "Refresh Article",
+    })
+    parser = ArticleParser(FigureSession(), storage)
+    monkeypatch.setattr(parser, "_figure_candidates", lambda *args: [
+        AssetCandidate(type="figure", url="https://example.test/fig1.jpg", label="Fig. 1")
+    ])
+    html = """
+    <html><head>
+      <meta name="citation_doi" content="10.1016/j.refresh.2025.1">
+    </head><body><article><figure><img src="fig1.jpg"></figure></article></body></html>
+    """
+
+    assert parser.refresh_figures("https://www.sciencedirect.com/science/article/pii/SREFRESH", html) is True
+    assert (adir / "assets" / "figures" / "fig_001.jpg").exists()
 
 
 def test_article_parser_extracts_sciencedirect_div_paragraphs(tmp_path):
